@@ -1,0 +1,49 @@
+//source: https://www.cs.colby.edu/maxwell/courses/tutorials/maketutor/
+
+/**Compiler to use
+ * A macro used to choose which compiler will be used
+ * Not necessary for this work since gcc will be used everytime
+ */
+
+/**List of flags
+ * Flags that will be used on the compilation command
+ * -I. will be usefull, since it will search for the
+ * necessary headers without providing paths
+ */
+
+/**DEPS
+ * Is used to provide which .h files the .c depend
+ */
+
+CC=[compiler]
+CFLAGS=[compilationFlags]
+DEPS=[headerFiles]
+
+/**Rule
+ * First line: .o file depends upon the .c version of the file
+ * and the .h files included in the DEPS macro
+ * Second line: To generate the .o file, "make" needs to compile
+ * the .c file using the compiler in the CC macro.
+ * AND MORE (on source)
+ */
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+
+/**Tag
+ * Command "make" (if blank) will execute the first tag
+ * in the make file. If not blank, "make [tag]" will execute
+ * the tag
+ */
+
+/**Dependencies
+ * Command "make" will execute when the files listed in 
+ * the dependencies change
+ */
+
+/**Tab
+ * Makefile requires a tab before a command in the makefile
+ */
+
+[tag]: [dependencies] 
+[tab] [command]
