@@ -1,6 +1,6 @@
-full: all run
-
 all: Client Referee Games clean
+
+full: all run
 
 Client: 
 
@@ -12,8 +12,8 @@ Games: g_RNGGuess.o utils.o
 g_RNGGuess.o: g_RNGGuess.c
 	gcc -c -o g_RNGGuess.o g_RNGGuess.c
 
-Referee: Referee.o
-	gcc -o Referee Referee.o
+Referee: Referee.o utils.o
+	gcc -o Referee Referee.o utils.o
 
 Referee.o: Referee.c
 	gcc -c -o Referee.o Referee.c
