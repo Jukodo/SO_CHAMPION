@@ -1,3 +1,5 @@
+full: all run
+
 all: Client Referee Games clean
 
 Client: 
@@ -22,7 +24,7 @@ utils.o: utils/utils.c
 .PHONY: clean
 
 clean:
-	rm -f *.o Games Referee
+	rm -f *.o
 
 run:
 	./Referee "TEST_PARAM"

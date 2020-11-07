@@ -5,10 +5,11 @@
 
 #include "utils/utils.h"
 
+#define GAME_TITLE "RNGGuess"
 #define STR_MEDIUM 50
 
 void introduction(){
-  printf("\nHello! Welcome to the Number Guessing game...");
+  printf("\nHello! Welcome to the %s!", GAME_TITLE);
   printf("\nThe game flow is: ");
   printf("\n\t - A random number will be generated from 1 to 9");
   printf("\n\t - You, the player, will have to guess it");
@@ -31,9 +32,8 @@ int main(int argc, char **argv){
   while(true){
     srand(time(0));
     int number = (rand()%9)+1;
-    printf("\nCurrent score: %d", score);
+    printf("\nCurrent score: %d\n", score);
     while(true){
-      printf("\nTry to guess:");
       printf("\t-> ");
       scanf("%[^\n]", line);
       Utils_CleanStdin();
@@ -49,6 +49,11 @@ int main(int argc, char **argv){
         
         flag_leave = strcmp(line, "n") == 0 || strcmp(line, "N") == 0;
         break;
+      }else{
+        printf("\tWrong...\n");
+        if(abs(atoi(line) - number) <= 2){
+          printf("\tPretty close though!\n");
+        }
       }
     }
 
@@ -57,10 +62,10 @@ int main(int argc, char **argv){
     }
   }
 
-  printf("\n\nThank you for playing!");
-  printf("\n\tYour score: %d", score);
+  printf("\n\nThank you for playing %s!", GAME_TITLE);
+  printf("\n\tYour final score: %d", score);
 
-  printf("\tPress ENTER when you are ready to leave...");
+  printf("\n\nPress ENTER when you are ready to leave...");
   getchar();
 
   return false;
