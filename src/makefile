@@ -26,6 +26,9 @@ utils.o: utils/utils.c
 clean:
 	rm -f *.o
 
+objClean:
+	rm Referee g_RNGGuess
+
 run:
-	./Referee "TEST_PARAM"
+	./Referee "D_300000" "W_60000"
 	./g_RNGGuess
