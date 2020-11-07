@@ -34,15 +34,15 @@ int main(int argc, char **argv){
     int number = (rand()%9)+1;
     printf("\nCurrent score: %d\n", score);
     while(true){
-      printf("\t-> ");
+      printf("\n\t-> ");
       scanf("%[^\n]", line);
       Utils_CleanStdin();
 
       if(atoi(line) == number){
         score++;
 
-        printf("\nYou got it! Play again? (n/N to leave):");
-        printf("\t-> ");
+        printf("\tYou got it!\n\tPlay again? (n/N to leave):");
+        printf("\n\t-> ");
         
         scanf("%[^\n]", line);
         Utils_CleanStdin();
