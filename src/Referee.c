@@ -3,11 +3,61 @@
 #include <string.h>
 
 #include "utils/utils.h"
+#include "Referee.h"
 
-#define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Games/"
-#define DEFAULT_MAXPLAYER 10
+Application* Setup_Application(){
+  Application* app = (Application*) malloc(sizeof(Application));
 
-bool Setup(int argc, char **argv){
+  app->referee.championshipDuration = 0;
+  app->referee.waitingDuration = 0;
+  
+  memset(app->referee.gameDir, '\0', STRING_MEDIUM);
+  app->referee.maxPlayers = 0;
+
+  return app;
+}
+
+bool isValid_ChampionshipDuration(Application* app, int value){
+  //App already registered a championship duration
+  if(app->referee.championshipDuration > 0){
+    printf("\n\tDuplicate parameter! Program will exit...");
+    return false;
+  }
+  
+  if(value < MIN_CHAMP_DURATION){
+    printf("\n\tChampionship duration cannot be lower than %d! Program will exit...", MIN_CHAMP_DURATION);
+    return false;
+  }
+  
+  if(value > MAX_CHAMP_DURATION){
+    printf("\n\tChampionship duration cannot be higher than %d! Program will exit...", MAX_CHAMP_DURATION);
+    return false;
+  }
+
+  return true;
+}
+
+bool isValid_WaitingDuration(Application* app, int value){
+  //App already registered a championship duration
+  if(app->referee.waitingDuration > 0){
+    printf("\n\tDuplicate parameter! Program will exit...");
+    return false;
+  }
+  
+  if(value < MIN_WAITING_DURATION){
+    printf("\n\tWaiting duration cannot be lower than %d! Program will exit...", MIN_WAITING_DURATION);
+    return false;
+  }
+  
+  if(value > MAX_WAITING_DURATION){
+    printf("\n\tWaiting duration cannot be higher than %d! Program will exit...", MAX_WAITING_DURATION);
+    return false;
+  }
+
+  return true;
+}
+
+bool Setup_Variables(Application* app, int argc, char **argv){
   printf("\nReferee is starting...");
   printf("\n\nParameters received:");
   
@@ -26,22 +76,26 @@ bool Setup(int argc, char **argv){
       return false;
     }
 
+    int intValue = atoi(value);
     switch(identifier[0]){
       case 'D':
-        printf("\n\tChampionship duration: %d", atoi(value));
+        if(!isValid_ChampionshipDuration(app, intValue))
+          return false;
+
+        printf("\n\tChampionship duration: %d", intValue);
+        app->referee.championshipDuration = intValue;
         break;
       case 'W':
-        printf("\n\tWaiting time: %d", atoi(value));
+        if(!isValid_WaitingDuration(app, intValue))
+          return false;
+          
+        printf("\n\tWaiting time: %d", intValue);
+        app->referee.waitingDuration = intValue;
         break;
       default:
         printf("\n\tUnknown paremeter! Program will exit...");
         return false;
     }
-
-    /**TAG_TODO
-     * Add parameters into the struct variables
-     * Check if variable already exists (denies same parameter)
-     */
   }
 
   char gamedir[STRING_MEDIUM];
@@ -55,21 +109,43 @@ bool Setup(int argc, char **argv){
       atoi(getenv("MAXPLAYER")) : 
       DEFAULT_MAXPLAYER;
 
+  if(maxplayer > MAX_MAXPLAYER)
+    maxplayer = MAX_MAXPLAYER;
+  if(maxplayer <= 1)
+    maxplayer = DEFAULT_MAXPLAYER;
+
   printf("\n\nEnvironment variables:\n");
   printf("\t[GAMEDIR] - %s\n", gamedir);
   printf("\t[MAXPLAYER] - %d\n", maxplayer);
+
+  strcpy(app->referee.gameDir, gamedir);
+  app->referee.maxPlayers = maxplayer;
   /**TAG_TODO
    * Add environment variables into struct variables
    */
    return true;
 }
 
+void Print_Application(Application* app){
+  printf("\nMyApplication");
+  printf("\n\tChampionship duration: %d", app->referee.championshipDuration);
+  printf("\n\tWaiting duration: %d", app->referee.waitingDuration);
+  printf("\n\tGame directory: %s", app->referee.gameDir);
+  printf("\n\tMax players: %d", app->referee.maxPlayers);
+}
+
 int main(int argc, char **argv){
-  if(!Setup(argc, argv)){
-    printf("\n\nSetup failed\n\n");
+  Application* app = Setup_Application();
+  if(app == NULL){
+    printf("\n\nSetup Application failed!\n\n");
+  }
+
+  if(!Setup_Variables(app, argc, argv)){
+    printf("\n\nSetup Variables failed!\n\n");
     return false;
   }
   
+  Print_Application(app);
 
   return false;
 }
