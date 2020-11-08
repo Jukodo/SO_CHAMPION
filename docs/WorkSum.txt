@@ -1,0 +1,76 @@
+Player (Client)
+	Several instances can run at the same time
+	Identified by name (no duplicates)
+	Interacts with Referee, and with the Game indirectly
+	Does not implement any game
+	Input is redirected to the Referee
+	Output comes from the Referee, and the Game indirectly
+	Input can be destinated to the Game or the Referee (to be differentiated)
+	Input type:
+		- Simple text: Is redirected to the Game
+		- #[command]: Is read and processed by the Referee
+	Known commands:
+		- #mygame: Referee informs Player which game he has
+		- #quit: Referee will remove Player, since he has quit. The Game set to that Player will also quit
+
+Referee
+	Only one instance can run at the same time
+	In between Player and Game
+	Managed by an admin
+	On quit, informs every Player and free all memory
+	Admin:
+		- Does not play
+		- Can manage the championship with a few actions
+		- No username nor password
+	Features:
+		//Communication specific
+		- Receive Player participation requests
+		- Receive Player game messages
+		- Receive Game information
+		- Provide Game information to Player
+
+		//General
+		- Maintain Player information in memory and updated (score included)
+		- Interact with admin and receive commands
+		- Interact with Game
+		- Interact with Player
+		- Manage the championship
+	Known commands:
+		- players: list every Players ingame
+		- games: list every possible Games
+		- k[username]: kick Player and behaves in same way has "#quit" from Player side
+		- s[username]: block all information flow for the Player specified, and informs Player of such event
+		- r[username]: unblock all information flow for the Player specified, and informs Player of such event
+		- end: ends the championship, same as the timeout, but when command is thrown
+		- exit: shutdown Referee
+		- any other commands are not necessary but possible
+
+Game
+	Develop at least one "new" game
+	Is anything that starts with "g_" on the GAMEDIR directory
+
+Championship Start:
+	Flow
+	1 - Await until at least 2 Players are on
+	2 - Start the "waiting time" for more Players
+	3 - When the timer ends, the championship starts 
+	4 - Referee will then randomize and set each Player with a Game
+	5 - Referee will inform each Player which game they got
+	6 - Referee will start each Game and redirect every information to the set Player
+	7 - Referee will be ready to receive any information from Players (new player, player left, new score, etc)
+	Anywhere - If the championship ends up with 1 Player only, the championship ends, and the last Player standing wins by default
+	
+Championship End:	
+	Flow
+	1 - Every Game will receive a signal (SIGUSR1), informing that the championship has ended, and they need to shutdown, returning the score
+	2 - Each Game will return the score from the "exit status"
+	3 - Every Player will receive a signal (SIGUSR1), informing that the championship has ended
+	4 - Referee will share with each Player their score
+	5 - Referee will share with every Player who won, displaying the winner username
+	6 - Referee stands and gets ready to start another championship
+	7 - Each player will stand but need to identify again, in order to show interest in the next championship
+
+Restrictions:
+	No communication from Player and Game
+	Only implement communication mechanisms provided from class
+	No data is permanent
