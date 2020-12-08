@@ -14,6 +14,9 @@ Application* Setup_Application(){
 
   app->referee.championshipDuration = 0;
   app->referee.waitingDuration = 0;
+
+  app->availableGames.gameList = NULL;
+  app->availableGames.quantityGames = 0;
   
   memset(app->referee.gameDir, '\0', STRING_MEDIUM);
   app->referee.maxPlayers = 0;
@@ -135,6 +138,7 @@ bool Setup_Variables(Application* app, int argc, char **argv){
     
     if(strcmp(line, "n") != 0 && strcmp(line, "N") != 0){
       mkdir(gamedir, 0777);
+      DIR* dir = opendir(gamedir);
       if (dir) {
         printf("\n\tDirectory has been created successfuly!");
         closedir(dir);
@@ -159,12 +163,56 @@ bool Setup_Variables(Application* app, int argc, char **argv){
    return true;
 }
 
+bool Setup_AvailableGames(Application* app){
+  DIR* gamedir = opendir(app->referee.gameDir);
+  struct dirent *dir;
+  if (gamedir) {
+    while ((dir = readdir(gamedir)) != NULL) {
+      if(dir->d_type == DT_REG){ //Is a file (maybe executable)
+        /**TAG_TODO
+         * Check if file is executable
+         */
+        printf("\n\t%s is executable", dir->d_name);
+
+        app->availableGames.quantityGames++;
+        if(app->availableGames.gameList == NULL){
+          app->availableGames.gameList = calloc(app->availableGames.quantityGames, sizeof(Game));
+          if(app->availableGames.gameList == NULL){
+            printf("Malloc failed");
+            return false;
+          }
+        }else{
+          Game* newGameList = realloc(app->availableGames.gameList, app->availableGames.quantityGames * sizeof(Game));
+          if(newGameList == NULL){
+            printf("Realloc failed");
+            return false;
+          }else{
+            app->availableGames.gameList = newGameList;
+          }
+        }
+        strcpy(app->availableGames.gameList[app->availableGames.quantityGames-1].fileName, dir->d_name);
+      }
+    }
+
+    closedir(gamedir);
+  }else{
+    printf("\n\tUnexpected error on mkdir()! Program will exit...");
+    return false;
+  }
+
+  return true;
+}
+
 void Print_Application(Application* app){
   printf("\nMyApplication");
   printf("\n\tChampionship duration: %d", app->referee.championshipDuration);
   printf("\n\tWaiting duration: %d", app->referee.waitingDuration);
   printf("\n\tGame directory: %s", app->referee.gameDir);
   printf("\n\tMax players: %d", app->referee.maxPlayers);
+  printf("\n\tAvailable Games: %d", app->availableGames.quantityGames);
+  for(int i = 0; i < app->availableGames.quantityGames; i++){
+    printf("\n\t\t[%d] - %s", i+1, app->availableGames.gameList[i].fileName);
+  }
 }
 
 int main(int argc, char **argv){
@@ -175,10 +223,15 @@ int main(int argc, char **argv){
 
   if(!Setup_Variables(app, argc, argv)){
     printf("\n\nSetup Variables failed!\n\n");
-    return false;
+    return 1;
+  }
+
+  if(!Setup_AvailableGames(app)){
+    printf("\n\nSetup Available Games failed!\n\n");
+    return 1;
   }
   
   Print_Application(app);
 
-  return false;
+  return 0;
 }

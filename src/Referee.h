@@ -11,9 +11,17 @@
 
 #define MAX_MAXPLAYER 30
 
+typedef struct Game Game;
+
 typedef struct Referee Referee;
+typedef struct AvailableGames AvailableGames;
 
 typedef struct Application Application; //This struct will keep all information that this application needs
+
+struct Game{
+  char gameName[STRING_MEDIUM];
+  char fileName[STRING_MEDIUM];
+};
 
 struct Referee{
   char gameDir[STRING_MEDIUM];
@@ -23,6 +31,12 @@ struct Referee{
   int waitingDuration;
 };
 
+struct AvailableGames{
+  Game* gameList;
+  int quantityGames;
+};
+
 struct Application{
   Referee referee;
+  AvailableGames availableGames;
 };
