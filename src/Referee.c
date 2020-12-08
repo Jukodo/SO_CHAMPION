@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #include "utils/utils.h"
 #include "Referee.h"
@@ -117,6 +121,35 @@ bool Setup_Variables(Application* app, int argc, char **argv){
   printf("\n\nEnvironment variables:\n");
   printf("\t[GAMEDIR] - %s\n", gamedir);
   printf("\t[MAXPLAYER] - %d\n", maxplayer);
+
+  DIR* dir = opendir(gamedir);
+  if (dir) {
+    closedir(dir);
+  } else if (ENOENT == errno) {
+    printf("\n\tDirectory does not exist... Create? (* = yes | n = no)");
+    printf("\n\t-> ");
+    
+    char line[STRING_MEDIUM];
+    scanf("%[^\n]", line);
+    Utils_CleanStdin();
+    
+    if(strcmp(line, "n") != 0 && strcmp(line, "N") != 0){
+      mkdir(gamedir, 0777);
+      if (dir) {
+        printf("\n\tDirectory has been created successfuly!");
+        closedir(dir);
+      }else{
+        printf("\n\tUnexpected error on mkdir()! Program will exit...");
+        return false;
+      }
+    }else{
+      printf("\n\tProgram cannot run without an existing directory! Program will exit...");
+      return false;
+    }
+  } else {
+    printf("\n\tUnexpected error on opendir()! Program will exit...");
+    return false;
+  }
 
   strcpy(app->referee.gameDir, gamedir);
   app->referee.maxPlayers = maxplayer;

@@ -6,7 +6,6 @@
 #include "utils/utils.h"
 
 #define GAME_TITLE "RNGGuess"
-#define STR_MEDIUM 50
 
 void introduction(){
   printf("\nHello! Welcome to the %s!", GAME_TITLE);
@@ -21,7 +20,7 @@ void introduction(){
 int main(int argc, char **argv){
   introduction();
   
-  char line[STR_MEDIUM];
+  char line[STRING_MEDIUM];
   
   printf("\n\tPlease press ENTER when you are ready to start!");
   getchar();
