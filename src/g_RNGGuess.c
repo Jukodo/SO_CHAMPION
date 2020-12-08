@@ -2,12 +2,25 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
+#include <unistd.h>
 
 #include "utils/utils.h"
 
 #define GAME_TITLE "RNGGuess"
 
-void introduction(){
+void handle_sigusr1(int sig){
+  printf("Received signal: %d AKA SIGUSR1", sig);
+}
+
+void Setup_SIGUSR1(){
+  struct sigaction sa = {0}; //{0} - The struct starts with 0's
+  sa.sa_flags = SA_RESTART;
+  sa.sa_handler = &handle_sigusr1;
+  sigaction(SIGUSR1, &sa, NULL);
+}
+
+void Print_Introduction(){
   printf("\nHello! Welcome to the %s!", GAME_TITLE);
   printf("\nThe game flow is: ");
   printf("\n\t - A random number will be generated from 1 to 9");
@@ -18,7 +31,12 @@ void introduction(){
 }
 
 int main(int argc, char **argv){
-  introduction();
+  Setup_SIGUSR1();
+
+  sleep(5);
+  kill(getpid(), SIGUSR1);
+
+  Print_Introduction();
   
   char line[STRING_MEDIUM];
   
