@@ -8,11 +8,17 @@ Player: Player.o utils.o
 Player.o: Player.c
 	gcc -c -o Player.o Player.c
 
-Referee: Referee.o utils.o
-	gcc -o ../Execs/Referee Referee.o utils.o
+Referee: Referee.o RService.o RThreads.o utils.o
+	gcc -o ../Execs/Referee Referee.o RService.o RThreads.o utils.o -pthread
 
 Referee.o: Referee.c
 	gcc -c -o Referee.o Referee.c
+
+RService.o: RService.c
+	gcc -c -o RService.o RService.c
+
+RThreads.o: RThreads.c
+	gcc -c -o RThreads.o RThreads.c
 
 Games: g_RNGGuess.o utils.o
 	gcc -o ../Execs/Games/g_RNGGuess g_RNGGuess.o utils.o
