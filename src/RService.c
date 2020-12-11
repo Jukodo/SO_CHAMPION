@@ -177,9 +177,12 @@ bool Setup_AvailableGames(Application *app) {
 
 bool Setup_NamedPipes(Application *app) {
   if (mkfifo(FIFO_R2P, 0777) == -1) {
-    printf("\n\tUnexpected error on mkfifo()! Program will exit...");
-    printf("\n\t\tError: %d", errno);
-    return 1;
+    // Only returns error if file does not exist after operation
+    if (errno != EEXIST) {
+      printf("\n\tUnexpected error on mkfifo()! Program will exit...");
+      printf("\n\t\tError: %d", errno);
+      return 1;
+    }
   }
 
   if (open(FIFO_R2P, O_RDWR) == -1) {

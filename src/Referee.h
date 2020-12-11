@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "utils/utils.h"
+#include "Utils/Utils.h"
 
 #define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Games/"
 #define DEFAULT_MAXPLAYER 10
