@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "../Utils/CCommunication.h"
 #include "../Utils/Utils.h"
 
 #define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Games/"
@@ -25,8 +26,6 @@
 #define MAX_WAITING_DURATION 120000
 
 #define MAX_MAXPLAYER 30
-
-#define FIFO_R2P "../tmp/fifo_qna_r2p"
 
 typedef struct Game Game;
 

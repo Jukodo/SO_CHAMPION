@@ -1,14 +1,15 @@
 #pragma once
-#include "Referee.h"
 #include "Utils.h"
+
+#define FIFO_R2P "../tmp/fifo_qna_r2p"
 
 #pragma region Shared Memory - Structs / Enums Prototypes
 // QnARequest Requests Variants
 typedef struct PlayerLoginRequest PlayerLoginRequest;
 
 // QnARequest Responses Variants
-typedef struct PlayerLoginResponse PlayerLoginResponse;
 typedef enum PlayerLoginResponseType PlayerLoginResponseType;
+typedef struct PlayerLoginResponse PlayerLoginResponse;
 
 // QnARequest Types Enums
 typedef enum QnARequestType QnARequestType;
@@ -24,14 +25,14 @@ struct PlayerLoginRequest {
 };
 
 // QnARequest Responses Variants
-struct PlayerLoginResponse {
-  PlayerLoginResponseType taxiLoginResponseType;
-};
 enum PlayerLoginResponseType {
   PLR_SUCCESS,
   PLR_INVALID_UNDEFINED,
   PLR_INVALID_CLOSED,
   PLR_INVALID_EXISTS
+};
+struct PlayerLoginResponse {
+  PlayerLoginResponseType playerLoginResponseType;
 };
 
 // QnARequest Types Enums
