@@ -1,22 +1,11 @@
 #include "Player.h"
 
-Application* Setup_Application() {
-  Application* app = (Application*)malloc(sizeof(Application));
-
-  memset(app->player.username, '\0', STRING_MEDIUM);
-
-  return app;
-}
-
-void Print_Application(Application* app) {
-  printf("\nMyApplication");
-  printf("\n\tUsername: %s", app->player.username);
-}
+#include "PService.h"
 
 int main(int argc, char** argv) {
-  Application* app = Setup_Application();
+  Application* app = malloc(sizeof(Application));
   if (app == NULL) {
-    printf("\n\nSetup Application failed!\n\n");
+    printf("\n\nApplication malloc() failed!!\n\n");
   }
 
   char username[STRING_MEDIUM];
@@ -27,7 +16,12 @@ int main(int argc, char** argv) {
 
   strcpy(app->player.username, username);
 
+  if (!Setup_Application(app)) {
+    printf("\n\nSetup Application failed!\n\n");
+    return EXIT_FAILURE;
+  }
+
   Print_Application(app);
 
-  return false;
+  return EXIT_SUCCESS;
 }

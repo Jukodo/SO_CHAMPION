@@ -8,11 +8,14 @@ fullPlayer: Player clean runPlayer
 
 fullGames: Games clean runGames
 
-Player: Player.o Utils.o
-	gcc -o ../Execs/Player ../tmp/Player.o ../tmp/Utils.o
+Player: Player.o PService.o Utils.o
+	gcc -o ../Execs/Player ../tmp/Player.o ../tmp/PService.o ../tmp/Utils.o
 
 Player.o: ./Player/Player.c
 	gcc -c -o ../tmp/Player.o ./Player/Player.c
+
+PService.o: ./Player/PService.c
+	gcc -c -o ../tmp/PService.o ./Player/PService.c
 
 Referee: Referee.o RService.o RThreads.o Utils.o
 	gcc -o ../Execs/Referee ../tmp/Referee.o ../tmp/RService.o ../tmp/RThreads.o ../tmp/Utils.o -pthread

@@ -16,7 +16,7 @@
 #include "../Utils/CCommunication.h"
 #include "../Utils/Utils.h"
 
-#define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Games/"
+#define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Execs/Games/"
 #define DEFAULT_MAXPLAYER 10
 
 #define MIN_CHAMP_DURATION 60000

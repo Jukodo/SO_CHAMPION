@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
 
   Application *app = (Application *)malloc(sizeof(Application));
   if (app == NULL) {
-    printf("\n\nSetup Application failed!\n\n");
+    printf("\n\nApplication malloc() failed!!\n\n");
   }
 
   if (!Setup_Application(app, argc, argv)) {
