@@ -181,14 +181,21 @@ bool Setup_NamedPipes(Application *app) {
     if (errno != EEXIST) {
       printf("\n\tUnexpected error on mkfifo()! Program will exit...");
       printf("\n\t\tError: %d", errno);
-      return 1;
+      return false;
     }
   }
 
-  if (open(FIFO_R2P, O_RDWR) == -1) {
-    printf("\n\tUnexpected error on open()! Program will exit...");
-    return 1;
-  }
+  /**TAG_LOOKAT
+   * Is this needed?
+   * Virtual Client can be useful to keep the thread not blocked, but does it
+   * matter?
+   */
+  // if (open(FIFO_R2P, O_RDWR) == -1) {
+  //   printf("\n\tUnexpected error on open()! Program will exit...");
+  //   return 1;
+  // }
+
+  return true;
 }
 
 bool Setup_Threads(Application *app) {

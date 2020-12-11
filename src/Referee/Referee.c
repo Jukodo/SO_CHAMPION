@@ -1,7 +1,6 @@
 #include "Referee.h"
 
 #include "RService.h"
-#include "Utils/Utils.h"
 
 void handle_sigusr1(int sig) {
   printf("\n\n\tReceived signal: %d...", sig);

@@ -6,7 +6,9 @@
 void* Thread_ReceiveQnARequests(void* _param) {
   TParam_QnARequest* param = (TParam_QnARequest*)_param;
 
-  int fdQnARequest_Read = open(FIFO_R2P, O_RDONLY);
+  int fdQnARequest_Read = open(FIFO_R2P, O_WRONLY);
+  printf("fdQnARequest_Read: %d", fdQnARequest_Read);
+
   if (fdQnARequest_Read == -1) {
     free(param);
     return (void*)EXIT_FAILURE;

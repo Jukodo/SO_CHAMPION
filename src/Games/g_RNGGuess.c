@@ -5,7 +5,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "Utils/Utils.h"
+#include "../Utils/Utils.h"
 
 #define GAME_TITLE "RNGGuess"
 

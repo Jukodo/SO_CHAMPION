@@ -1,11 +1,5 @@
 #include "Player.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "Utils/Utils.h"
-
 Application* Setup_Application() {
   Application* app = (Application*)malloc(sizeof(Application));
 

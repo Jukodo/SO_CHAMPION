@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "Utils/Utils.h"
+#include "../Utils/Utils.h"
 
 #define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Games/"
 #define DEFAULT_MAXPLAYER 10

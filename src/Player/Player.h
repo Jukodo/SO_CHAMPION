@@ -1,4 +1,10 @@
-#include "Utils/Utils.h"
+#pragma once
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "../Utils/Utils.h"
 
 typedef struct Player Player;
 
