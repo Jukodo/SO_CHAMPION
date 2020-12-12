@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
   }
 
   printf("\n\tNow waiting for thread to end");
-  sleep(100);
+  pthread_join(app->threadHandles.hQnARequests, NULL);
   printf("\n\tThread has ended");
 
   Print_Application(app);

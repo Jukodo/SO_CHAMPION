@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "../Utils/CCommunication.h"
 #include "../Utils/Utils.h"
 
 typedef struct Player Player;
@@ -24,11 +25,12 @@ typedef struct Application
                   // application needs
 
 struct Player {
+  bool loggedIn;
   char username[STRING_MEDIUM];
 };
 
 struct NamedPipeHandles {
-  int fdQnARequest_Read;
+  int fdQnARequest_Write;
 };
 
 struct Application {

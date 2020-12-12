@@ -199,7 +199,7 @@ bool Setup_NamedPipes(Application *app) {
 }
 
 bool Setup_Threads(Application *app) {
-  TParam_QnARequest *param = malloc(sizeof(TParam_QnARequest));
+  TParam_ReceiveQnARequest *param = malloc(sizeof(TParam_ReceiveQnARequest));
   if (param == NULL) {
     return false;
   }

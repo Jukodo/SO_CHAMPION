@@ -2,9 +2,9 @@
 
 #include "Referee.h"
 
-typedef struct TParam_QnARequest TParam_QnARequest;
+typedef struct TParam_ReceiveQnARequest TParam_ReceiveQnARequest;
 
-struct TParam_QnARequest {
+struct TParam_ReceiveQnARequest {
   Application* app;
 };
 
