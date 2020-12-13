@@ -1,30 +1,49 @@
 #pragma once
 #include "Utils.h"
 
-#define FIFO_R2P "../tmp/fifo_qna_r2p"
+#define FIFO_REFEREE "../tmp/fifo_qna_referee"
+#define FIFO_PLAYER "../tmp/fifo_toss_player"
 
-#pragma region Shared Memory - Structs / Enums Prototypes
+#pragma region NamedPipe - Structs / Enums Prototypes
 // QnARequest Requests Variants
 typedef struct PlayerLoginRequest PlayerLoginRequest;
+typedef struct PlayerInputRequest PlayerInputRequest;
 
-// QnARequest Responses Variants
+// QnARequest Request Types Enums
+typedef enum QnARequestType QnARequestType;
+
+// TossComm Variants (QnA Responses and independant comms)
 typedef enum PlayerLoginResponseType PlayerLoginResponseType;
 typedef struct PlayerLoginResponse PlayerLoginResponse;
 
-// QnARequest Types Enums
-typedef enum QnARequestType QnARequestType;
+typedef enum PlayerInputResponseType PlayerInputResponseType;
+typedef struct PlayerInputResponse PlayerInputResponse;
+
+// TossComm Types Enums
+typedef enum TossCommType TossCommType;
 
 // Core Structs
 typedef struct QnARequest QnARequest;
+typedef struct TossComm TossComm;
 #pragma endregion
-
-#pragma region Shared Memory - Structs / Enums Definement
+#pragma region NamedPipe - Structs / Enums Definement
 // QnARequest Requests Variants
 struct PlayerLoginRequest {
   char username[STRING_LARGE];
+  int procId;
+};
+struct PlayerInputRequest {
+  char command[STRING_LARGE];
+  int procId;
 };
 
-// QnARequest Responses Variants
+// QnARequest Request Types Enums
+enum QnARequestType {  // Types of QnA requests
+  QnART_LOGIN,         // Player login
+  QnART_INPUT,         // Player input
+};
+
+// TossComm Variants (QnA Responses and independant comms)
 enum PlayerLoginResponseType {
   PLR_SUCCESS,
   PLR_INVALID_UNDEFINED,
@@ -35,19 +54,39 @@ struct PlayerLoginResponse {
   PlayerLoginResponseType playerLoginResponseType;
 };
 
-// QnARequest Types Enums
-enum QnARequestType {  // Types of QnA requests
-  QnART_LOGIN,         // Player login
+enum PlayerInputResponseType {
+  PIR_INVALID,
+  PIR_INPUT,
+  PIR_GAMENAME,
+  PIR_SHUTDOWN
+};
+struct PlayerInputResponse {
+  PlayerInputResponseType playerInputResponseType;
+  union {
+    char gameName[STRING_LARGE];
+  };
+};
+
+// TossComm Types Enums
+enum TossCommType {
+  TCRT_LOGIN_RESP,
+  TCRT_INPUT_RESP,
 };
 
 // Core Structs
 struct QnARequest {
   union {
     PlayerLoginRequest playerLoginRequest;
+    PlayerInputRequest playerInputRequest;
   };
   QnARequestType requestType;
+};
+struct TossComm {
   union {
     PlayerLoginResponse playerLoginResponse;
+    PlayerInputResponse playerInputResponse;
   };
+  TossCommType tossType;
 };
+
 #pragma endregion

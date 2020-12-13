@@ -19,6 +19,8 @@
 typedef struct Player Player;
 
 typedef struct NamedPipeHandles NamedPipeHandles;
+typedef struct ThreadHandles ThreadHandles;
+typedef struct MutexHandles MutexHandles;
 
 typedef struct Application
     Application;  // This struct will keep all information that this
@@ -30,10 +32,22 @@ struct Player {
 };
 
 struct NamedPipeHandles {
-  int fdQnARequest_Write;
+  int fdQnARequest_Write;  // Writes QnA Requests to Referee
+  int fdComm_Read;  // Reads Communication Messages from Referee directed to
+                    // self
+};
+
+struct ThreadHandles {
+  pthread_t hReceiveComms;
+};
+
+struct MutexHandles {
+  pthread_mutex_t *hMutex_LoggedIn;
 };
 
 struct Application {
   Player player;
   NamedPipeHandles namedPipeHandles;
+  ThreadHandles threadHandles;
+  MutexHandles mutexHandles;
 };

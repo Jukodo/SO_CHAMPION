@@ -3,9 +3,9 @@
 #include "RService.h"
 
 void handle_sigusr1(int sig) {
-  printf("\n\n\tReceived signal: %d...", sig);
-  printf("\n\tClosing App and deleting FIFOs!\n\n");
-  unlink(FIFO_R2P);
+  printf("\n\tReceived signal: %d...\n", sig);
+  printf("\tClosing App and deleting FIFOs!\n");
+  unlink(FIFO_REFEREE);
   exit(EXIT_SUCCESS);
 }
 
@@ -17,21 +17,19 @@ int main(int argc, char **argv) {
 
   Application *app = (Application *)malloc(sizeof(Application));
   if (app == NULL) {
-    printf("\n\nApplication malloc() failed!!\n\n");
+    printf("\nApplication malloc() failed!\n");
   }
 
   if (!Setup_Application(app, argc, argv)) {
-    printf("\n\nSetup Application failed!\n\n");
+    printf("\nSetup Application failed!\n");
     return 1;
   }
 
-  printf("\n\tNow waiting for thread to end");
   pthread_join(app->threadHandles.hQnARequests, NULL);
-  printf("\n\tThread has ended");
 
   Print_Application(app);
 
-  unlink(FIFO_R2P);
+  unlink(FIFO_PLAYER);
   free(app);
   return 0;
 }

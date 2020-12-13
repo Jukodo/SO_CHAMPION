@@ -28,7 +28,7 @@
 #define MAX_MAXPLAYER 30
 
 typedef struct Game Game;
-
+typedef struct Player Player;
 typedef struct Referee Referee;
 typedef struct AvailableGames AvailableGames;
 
@@ -41,6 +41,16 @@ typedef struct Application
 struct Game {
   char gameName[STRING_MEDIUM];
   char fileName[STRING_MEDIUM];
+};
+
+struct Player {
+  bool emptyStruct;
+
+  char gamename[STRING_LARGE];
+  char username[STRING_LARGE];
+  int procId;
+
+  int fdComm_Write;
 };
 
 struct Referee {
@@ -63,6 +73,7 @@ struct ThreadHandles {
 struct Application {
   Referee referee;
   AvailableGames availableGames;
+  Player* playerList;
 
   ThreadHandles threadHandles;
 };

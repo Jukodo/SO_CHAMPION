@@ -6,8 +6,7 @@
 void* Thread_ReceiveQnARequests(void* _param) {
   TParam_ReceiveQnARequest* param = (TParam_ReceiveQnARequest*)_param;
 
-  int fdQnARequest_Read = open(FIFO_R2P, O_RDONLY);
-  printf("fdQnARequest_Read: %d\n", fdQnARequest_Read);
+  int fdQnARequest_Read = open(FIFO_REFEREE, O_RDONLY);
 
   if (fdQnARequest_Read == -1) {
     free(param);
@@ -16,6 +15,7 @@ void* Thread_ReceiveQnARequests(void* _param) {
 
   QnARequest request;
   while (1) {
+    sleep(2);
     // Receive Question
     int readBytes = read(fdQnARequest_Read, &request, sizeof(QnARequest));
     // printf("\n\n\tB: %d\n", sizeof(QnARequest));
@@ -27,13 +27,45 @@ void* Thread_ReceiveQnARequests(void* _param) {
     }
 
     // Send Answer
+    TossComm tossComm;
+    int playerIndex;
     switch (request.requestType) {
       case QnART_LOGIN:
-        printf("\tReceived Login Request from Player with username: %s\n",
-               request.playerLoginRequest.username);
+        if (Service_PlayerLogin(param->app, request.playerLoginRequest.procId,
+                                request.playerLoginRequest.username)) {
+          playerIndex =
+              getPlayerIndex(param->app, request.playerLoginRequest.procId);
+
+          if (playerIndex == -1) {
+            continue;
+          }
+
+          tossComm.tossType = TCRT_LOGIN_RESP;
+          tossComm.playerLoginResponse.playerLoginResponseType = PLR_SUCCESS;
+        } else {
+          continue;
+        }
         break;
+      case QnART_INPUT: {
+        PlayerInputResponse resp =
+            Service_PlayerInput(param->app, request.playerInputRequest.procId,
+                                request.playerInputRequest.command);
+        if (resp.playerInputResponseType != PIR_INPUT) {
+          tossComm.tossType = TCRT_INPUT_RESP;
+          tossComm.playerInputResponse = resp;
+        } else {
+          continue;
+        }
+      } break;
       default:
-        break;
+        continue;
+    }
+
+    int writtenBytes = write(param->app->playerList[playerIndex].fdComm_Write,
+                             &tossComm, sizeof(TossComm));
+
+    if (writtenBytes != sizeof(TossComm)) {
+      printf("TossComm failed\n");
     }
   }
 

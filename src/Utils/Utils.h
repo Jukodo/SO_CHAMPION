@@ -1,10 +1,10 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <ctype.h>
 
-//bool define
+// bool define
 typedef int bool;
 #define true 1
 #define false 0
