@@ -254,7 +254,9 @@ bool Service_PlayerLogin(Application *app, int procId, char *username) {
   strcpy(app->playerList[emptyIndex].username, username);
   strcpy(app->playerList[emptyIndex].gamename, "Not yet developed");
 
-  Print_Application(app);
+  printf("\nNew player has logged in!\n");
+  printf("\tUsername: %s\n", username);
+  printf("\tProcId: %d\n\n", procId);
 
   return true;
 }
@@ -264,7 +266,7 @@ PlayerInputResponse Service_PlayerInput(Application *app, int procId,
   PlayerInputResponse resp;
   resp.playerInputResponseType = PIR_INVALID;
 
-  int playerIndex = getPlayerIndex(app, procId);
+  int playerIndex = getPlayerIndexByProcId(app, procId);
   if (playerIndex == -1) {
     printf("Could not find Player with procId:%d\n", procId);
     return resp;
@@ -279,7 +281,7 @@ PlayerInputResponse Service_PlayerInput(Application *app, int procId,
     printf("Received a command: %s from Player with procId: %d\n", command,
            procId);
 
-    resp = Service_HandleCommand(app, procId, command);
+    resp = Service_HandlePlayerCommand(app, procId, command);
     return resp;
   } else {
     printf("Received a game input: %s from Player with procId: %d\n", command,
@@ -290,14 +292,14 @@ PlayerInputResponse Service_PlayerInput(Application *app, int procId,
   }
 }
 
-PlayerInputResponse Service_HandleCommand(Application *app, int procId,
-                                          char *command) {
+PlayerInputResponse Service_HandlePlayerCommand(Application *app, int procId,
+                                                char *command) {
   PlayerInputResponse resp;
 
   if (strcmp(command, "#quit") == 0) {
     resp.playerInputResponseType = PIR_SHUTDOWN;
   } else if (strcmp(command, "#mygame") == 0) {
-    int playerIndex = getPlayerIndex(app, procId);
+    int playerIndex = getPlayerIndexByProcId(app, procId);
     if (playerIndex == -1) {
       resp.playerInputResponseType = PIR_INVALID;
       return resp;
@@ -310,6 +312,58 @@ PlayerInputResponse Service_HandleCommand(Application *app, int procId,
   return resp;
 }
 
+void Service_HandleSelfCommand(Application *app, char *command) {
+  char *commandName = strtok(command, " ");
+
+  if (strcmp(commandName, "players") == 0) {
+    Print_PlayerList(app);
+  } else if (strcmp(commandName, "games") == 0) {
+    Print_AvailableGameList(app);
+  } else if (strcmp(commandName, "k") == 0) {
+    char *commandValue = strtok(NULL, " ");
+    Service_KickPlayer(app, commandValue);
+  } else if (strcmp(commandName, "exit") == 0) {
+    Service_Exit(app);
+  }
+}
+
+bool Service_KickPlayer(Application *app, char *username) {
+  if (Utils_StringIsEmpty(username)) {
+    printf("Username is empty!\n");
+    return false;
+  }
+
+  int playerIndex = getPlayerIndexByUsername(app, username);
+  if (playerIndex == -1) {
+    printf("Username is invalid!\n");
+    return false;
+  }
+
+  printf("\nTrying to kick a player\n");
+  printf("\tUsername: %s\n", username);
+  TossComm tossComm;
+  tossComm.tossType = TCRT_INPUT_RESP;
+  tossComm.playerInputResponse.playerInputResponseType = PIR_SHUTDOWN;
+
+  int writtenBytes = write(app->playerList[playerIndex].fdComm_Write, &tossComm,
+                           sizeof(TossComm));
+  if (writtenBytes != sizeof(TossComm)) {
+    printf("\nKick player has failed!\n");
+  }
+
+  Clean_Player(app, app->playerList[playerIndex].procId);
+  return true;
+}
+
+void Service_Exit(Application *app) {
+  for (int i = 0; i < app->referee.maxPlayers; i++) {
+    if (!app->playerList[i].emptyStruct) {
+      Service_KickPlayer(app, app->playerList[i].username);
+    }
+  }
+  kill(getpid(), SIGUSR1);
+}
+
 int getPlayerListEmptyIndex(Application *app) {
   for (int i = 0; i < app->referee.maxPlayers; i++) {
     if (app->playerList[i].emptyStruct) {
@@ -320,7 +374,7 @@ int getPlayerListEmptyIndex(Application *app) {
   return -1;
 }
 
-int getPlayerIndex(Application *app, int procId) {
+int getPlayerIndexByProcId(Application *app, int procId) {
   for (int i = 0; i < app->referee.maxPlayers; i++) {
     if (app->playerList[i].procId == procId) {
       return i;
@@ -328,6 +382,27 @@ int getPlayerIndex(Application *app, int procId) {
   }
 
   return -1;
+}
+
+int getPlayerIndexByUsername(Application *app, char *username) {
+  for (int i = 0; i < app->referee.maxPlayers; i++) {
+    if (strcmp(app->playerList[i].username, username) == 0) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+void Clean_Player(Application *app, int procId) {
+  int playerIndex = getPlayerIndexByProcId(app, procId);
+  if (playerIndex == -1) {
+    return;
+  }
+
+  close(app->playerList[playerIndex].fdComm_Write);
+  memset(&app->playerList[playerIndex], '\0', sizeof(Player));
+  app->playerList[playerIndex].emptyStruct = true;
 }
 
 bool isValid_ChampionshipDuration(Application *app, int value) {
@@ -388,20 +463,27 @@ void Print_Application(Application *app) {
   printf("\n\tWaiting duration: %d", app->referee.waitingDuration);
   printf("\n\tGame directory: %s", app->referee.gameDir);
   printf("\n\tMax players: %d", app->referee.maxPlayers);
-  printf("\n\tAvailable Games: %d", app->availableGames.quantityGames);
-  for (int i = 0; i < app->availableGames.quantityGames; i++) {
-    printf("\n\t\t[%02d] - %s", i + 1,
-           app->availableGames.gameList[i].fileName);
-  }
-
-  printf("\n\tPlayer List");
-  for (int i = 0; i < app->referee.maxPlayers; i++) {
-    if (app->playerList[i].emptyStruct) {
-      printf("\n\t\t[%02d] - EMPTY SLOT", i + 1);
-    } else {
-      printf("\n\t\t[%02d] - %s", i + 1, app->playerList[i].username);
-    }
-  }
+  Print_AvailableGameList(app);
+  Print_PlayerList(app);
 
   printf("\n");
+}
+
+void Print_PlayerList(Application *app) {
+  printf("\n\tPlayer List\n");
+  for (int i = 0; i < app->referee.maxPlayers; i++) {
+    if (app->playerList[i].emptyStruct) {
+      printf("\t\t[%02d] - EMPTY SLOT\n", i + 1);
+    } else {
+      printf("\t\t[%02d] - %s\n", i + 1, app->playerList[i].username);
+    }
+  }
+}
+
+void Print_AvailableGameList(Application *app) {
+  printf("\n\tAvailable Game List\n");
+  for (int i = 0; i < app->availableGames.quantityGames; i++) {
+    printf("\t\t[%02d] - %s\n", i + 1,
+           app->availableGames.gameList[i].fileName);
+  }
 }

@@ -42,6 +42,7 @@ void* Thread_ReceiveComms(void* _param) {
         switch (receivedTossComm.playerInputResponse.playerInputResponseType) {
           case PIR_SHUTDOWN:
             printf("I can shutdown\n");
+            kill(getpid(), SIGUSR1);
             break;
           case PIR_GAMENAME:
             printf("My game name is: %s\n",

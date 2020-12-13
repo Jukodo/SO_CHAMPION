@@ -25,9 +25,20 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  pthread_join(app->threadHandles.hQnARequests, NULL);
+#pragma region Handle stdin
+  char command[STRING_LARGE];
+  bool flagContinue = true;
+  printf("\nApplication started! Insert commands below:\n");
+  do {
+    memset(command, '\0', STRING_LARGE);
 
-  Print_Application(app);
+    printf("\t-> ");
+    scanf(" %[^\n]", command);
+    Utils_CleanStdin();
+
+    Service_HandleSelfCommand(app, command);
+  } while (flagContinue);
+#pragma endregion
 
   unlink(FIFO_PLAYER);
   free(app);

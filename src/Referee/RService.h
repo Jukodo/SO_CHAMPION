@@ -14,9 +14,17 @@ bool isValid_WaitingDuration(Application *app, int value);
 bool Service_PlayerLogin(Application *app, int procId, char *username);
 PlayerInputResponse Service_PlayerInput(Application *app, int procId,
                                         char *command);
-PlayerInputResponse Service_HandleCommand(Application *app, int procId,
-                                          char *command);
+PlayerInputResponse Service_HandlePlayerCommand(Application *app, int procId,
+                                                char *command);
+void Service_HandleSelfCommand(Application *app, char *command);
+bool Service_KickPlayer(Application *app, char *username);
+void Service_Exit(Application *app);
+
 int getPlayerListEmptyIndex(Application *app);
-int getPlayerIndex(Application *app, int procId);
+int getPlayerIndexByProcId(Application *app, int procId);
+int getPlayerIndexByUsername(Application *app, char *username);
+void Clean_Player(Application *app, int procId);
 
 void Print_Application(Application *app);
+void Print_PlayerList(Application *app);
+void Print_AvailableGameList(Application *app);

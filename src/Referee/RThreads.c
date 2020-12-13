@@ -33,8 +33,8 @@ void* Thread_ReceiveQnARequests(void* _param) {
       case QnART_LOGIN:
         if (Service_PlayerLogin(param->app, request.playerLoginRequest.procId,
                                 request.playerLoginRequest.username)) {
-          playerIndex =
-              getPlayerIndex(param->app, request.playerLoginRequest.procId);
+          playerIndex = getPlayerIndexByProcId(
+              param->app, request.playerLoginRequest.procId);
 
           if (playerIndex == -1) {
             continue;
@@ -50,7 +50,8 @@ void* Thread_ReceiveQnARequests(void* _param) {
         PlayerInputResponse resp =
             Service_PlayerInput(param->app, request.playerInputRequest.procId,
                                 request.playerInputRequest.command);
-        if (resp.playerInputResponseType != PIR_INPUT) {
+        if (resp.playerInputResponseType != PIR_INPUT &&
+            resp.playerInputResponseType != PIR_INVALID) {
           tossComm.tossType = TCRT_INPUT_RESP;
           tossComm.playerInputResponse = resp;
         } else {
