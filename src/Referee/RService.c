@@ -324,6 +324,8 @@ void Service_HandleSelfCommand(Application *app, char *command) {
     Service_KickPlayer(app, commandValue);
   } else if (strcmp(commandName, "exit") == 0) {
     Service_Exit(app);
+  } else if (strcmp(commandName, "t_opengame") == 0) {
+    Service_OpenGame(app);
   }
 }
 
@@ -362,6 +364,65 @@ void Service_Exit(Application *app) {
     }
   }
   kill(getpid(), SIGUSR1);
+}
+
+void Service_OpenGame(Application *app) {
+  int Pipe_C2P[2];  // Child => Parent
+  int Pipe_P2C[2];  // Parent => Child
+
+  if (pipe(Pipe_C2P) == -1) {
+    return;
+  }
+  if (pipe(Pipe_P2C) == -1) {
+    return;
+  }
+
+  int forkStatus = fork();
+  if (forkStatus < 0) {
+    printf("[ERROR] - Fork failed!\n");
+  }
+
+  if (forkStatus == 0) {
+    close(Pipe_C2P[0]);  // Will not need C => P reading pipe
+    close(Pipe_P2C[1]);  // Will not need P => C writting pipe
+
+    close(1);
+    dup(Pipe_C2P[1]);
+
+    close(0);
+    dup(Pipe_P2C[0]);
+
+    // dup2(Pipe_P2C[0], 0);
+    // dup2(Pipe_C2P[1], 1);
+
+    // close(Pipe_C2P[0]);  // No longer needed | STDIN is the new C => P
+    // reading pipe
+    // close(Pipe_P2C[1]);  // No longer needed | STDOUT is the new P => C
+    // writting pipe
+
+    int x;
+    read(STDIN_FILENO, &x, sizeof(x));
+    fprintf(stderr, "[CHILDREN] - I got %d\n", x);
+    x *= 4;
+    write(STDOUT_FILENO, &x, sizeof(x));
+    fprintf(stderr, "[CHILDREN] - I sent %d\n", x);
+  } else {
+    close(Pipe_C2P[1]);  // Will not need C => P writting pipe
+    close(Pipe_P2C[0]);  // Will not need P => C reading pipe
+    srand(time(NULL));
+    int y = rand() % 10;
+    if (write(Pipe_P2C[1], &y, sizeof(y)) == -1) {
+      return;
+    }
+    printf("[PARENT] - I sent %d\n", y);
+    if (read(Pipe_C2P[0], &y, sizeof(y)) == -1) {
+      return;
+    }
+    printf("[PARENT] - I got %d\n", y);
+  }
+
+  printf("%s\n", app->referee.gameDir);
+  exit(1);
 }
 
 int getPlayerListEmptyIndex(Application *app) {

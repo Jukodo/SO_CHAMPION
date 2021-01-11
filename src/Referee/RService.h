@@ -19,6 +19,7 @@ PlayerInputResponse Service_HandlePlayerCommand(Application *app, int procId,
 void Service_HandleSelfCommand(Application *app, char *command);
 bool Service_KickPlayer(Application *app, char *username);
 void Service_Exit(Application *app);
+void Service_OpenGame(Application *app);
 
 int getPlayerListEmptyIndex(Application *app);
 int getPlayerIndexByProcId(Application *app, int procId);
