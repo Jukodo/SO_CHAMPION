@@ -2,7 +2,7 @@ all: Player Referee Games clean
 
 full: all run
 
-fullReferee: Referee clean runReferee
+fullReferee: Referee Games clean runReferee
 
 fullPlayer: Player clean runPlayer
 
