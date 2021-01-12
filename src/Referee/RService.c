@@ -37,13 +37,12 @@ bool Setup_Application(Application *app, int argc, char **argv) {
     app->playerList[i].emptyStruct = true;
   }
 
+  Print_Application(app);
+
   return true;
 }
 
 bool Setup_Variables(Application *app, int argc, char **argv) {
-  printf("Referee is starting...\n");
-  printf("\nParameters received:\n");
-
   // argv[0] always is the executable path (skipped on the cycle)
   for (int i = 1; i < argc; i++) {
     if (argc != 3) {
@@ -68,13 +67,11 @@ bool Setup_Variables(Application *app, int argc, char **argv) {
       case 'D':
         if (!isValid_ChampionshipDuration(app, intValue)) return false;
 
-        printf("\tChampionship duration: %d\n", intValue);
         app->referee.championshipDuration = intValue;
         break;
       case 'W':
         if (!isValid_WaitingDuration(app, intValue)) return false;
 
-        printf("\tWaiting time: %d\n", intValue);
         app->referee.waitingDuration = intValue;
         break;
       default:
@@ -95,10 +92,6 @@ bool Setup_Variables(Application *app, int argc, char **argv) {
 
   if (maxplayer > MAX_MAXPLAYER) maxplayer = MAX_MAXPLAYER;
   if (maxplayer <= 1) maxplayer = DEFAULT_MAXPLAYER;
-
-  printf("\nEnvironment variables:\n");
-  printf("\t[GAMEDIR] - %s\n", gamedir);
-  printf("\t[MAXPLAYER] - %d\n", maxplayer);
 
   DIR *dir = opendir(gamedir);
   if (dir) {
@@ -400,29 +393,64 @@ void Service_OpenGame(Application *app) {
     // close(Pipe_P2C[1]);  // No longer needed | STDOUT is the new P => C
     // writting pipe
 
-    int x;
-    read(STDIN_FILENO, &x, sizeof(x));
-    fprintf(stderr, "[CHILDREN] - I got %d\n", x);
-    x *= 4;
-    write(STDOUT_FILENO, &x, sizeof(x));
-    fprintf(stderr, "[CHILDREN] - I sent %d\n", x);
+    sleep(4);
+
+    char buffer[STRING_LARGE];
+    sprintf(buffer, "Children is sending a message\n");
+    write(STDOUT_FILENO, &buffer, STRING_LARGE);
+
+    sleep(2);
+
+    sprintf(buffer, "Children is sending a message AGAin\n");
+    write(STDOUT_FILENO, &buffer, STRING_LARGE);
+
+    int gameIndex = getRandomGameIndex(app);
+
+    char gamePath[STRING_LARGE];
+    snprintf(gamePath, STRING_LARGE, "%s%s", app->referee.gameDir,
+             app->availableGames.gameList[getRandomGameIndex(app)].fileName);
+
+    fprintf(stderr, "[CHILDREN INFO] - My game path: %s\n", gamePath);
+    if (execl(gamePath, gamePath, NULL) == -1) {
+      fprintf(stderr, "[CHILDREN ERROR] - Execl failed! Error: %d\n", errno);
+    }
+    fprintf(stderr, "[CHILDREN ERROR] - I'm not supposed to be here\n");
+
   } else {
     close(Pipe_C2P[1]);  // Will not need C => P writting pipe
     close(Pipe_P2C[0]);  // Will not need P => C reading pipe
-    srand(time(NULL));
-    int y = rand() % 10;
-    if (write(Pipe_P2C[1], &y, sizeof(y)) == -1) {
-      return;
-    }
-    printf("[PARENT] - I sent %d\n", y);
-    if (read(Pipe_C2P[0], &y, sizeof(y)) == -1) {
-      return;
-    }
-    printf("[PARENT] - I got %d\n", y);
+
+    // char buffer[STRING_LARGE];
+    // if (read(Pipe_C2P[0], buffer, sizeof(buffer)) == -1) {
+    //   return;
+    // }
+    // printf("[PARENT] - I got %s\n", buffer);
+    // if (read(Pipe_C2P[0], buffer, sizeof(buffer)) == -1) {
+    //   return;
+    // }
+    // printf("[PARENT] - I got %s\n", buffer);
+
+    char buffer[STRING_LARGE];
+    int readBytes;
+    do {
+      readBytes = read(Pipe_C2P[0], buffer, sizeof(buffer));
+
+      printf("[PARENT] I got %d bytes\n", readBytes);
+      printf("[PARENT] I read: %s\n", buffer);
+
+      memset(buffer, '\0', STRING_LARGE);
+      sleep(1);
+    } while (readBytes >= 0);
   }
 
-  printf("%s\n", app->referee.gameDir);
+  // printf("\n\n%s\n", app->referee.gameDir);
   exit(1);
+}
+
+int getRandomGameIndex(Application *app) {
+  srand(time(NULL));
+
+  return rand() % app->availableGames.quantityGames;
 }
 
 int getPlayerListEmptyIndex(Application *app) {

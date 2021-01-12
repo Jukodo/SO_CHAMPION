@@ -33,10 +33,23 @@ void Print_Introduction() {
 }
 
 int main(int argc, char **argv) {
-  Setup_SIGUSR1();
+  char buffer[STRING_LARGE];
+  memset(buffer, '\0', STRING_LARGE);
+  sprintf(buffer, "Children is sending a message AGAin but from game\n");
+  write(STDOUT_FILENO, &buffer, sizeof(buffer));
+  memset(buffer, '\0', STRING_LARGE);
+  sprintf(buffer, "Children is sending a message AGAin but from game AGAIn\n");
+  write(STDOUT_FILENO, &buffer, sizeof(buffer));
 
-  sleep(5);
-  kill(getpid(), SIGUSR1);
+  fprintf(stdout, "I work well\n");
+  printf("I work well\n");
+
+  char aff[STRING_LARGE];
+  memset(aff, '\0', STRING_LARGE);
+  sprintf(aff, "Lmao they dont work but i do\n");
+  write(STDOUT_FILENO, &aff, sizeof(aff));
+
+  Setup_SIGUSR1();
 
   Print_Introduction();
 

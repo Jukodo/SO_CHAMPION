@@ -21,6 +21,7 @@ bool Service_KickPlayer(Application *app, char *username);
 void Service_Exit(Application *app);
 void Service_OpenGame(Application *app);
 
+int getRandomGameIndex(Application *app);
 int getPlayerListEmptyIndex(Application *app);
 int getPlayerIndexByProcId(Application *app, int procId);
 int getPlayerIndexByUsername(Application *app, char *username);
