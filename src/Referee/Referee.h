@@ -27,6 +27,7 @@
 
 #define MAX_MAXPLAYER 30
 
+typedef struct GameProc GameProc;
 typedef struct Game Game;
 typedef struct Player Player;
 typedef struct Referee Referee;
@@ -38,18 +39,29 @@ typedef struct Application
     Application;  // This struct will keep all information that this application
                   // needs
 
+struct GameProc {
+  bool active;
+
+  pthread_t gameHandleThread;
+
+  int fdReadFromGame;
+  int fdWriteToGame;
+
+  char gameName[STRING_MEDIUM];
+};
+
 struct Game {
   char gameName[STRING_MEDIUM];
   char fileName[STRING_MEDIUM];
 };
 
 struct Player {
-  bool emptyStruct;
+  bool active;
 
-  char gamename[STRING_LARGE];
   char username[STRING_LARGE];
   int procId;
 
+  GameProc gameProc;
   int fdComm_Write;
 };
 

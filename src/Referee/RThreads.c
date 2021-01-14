@@ -4,25 +4,33 @@
 #include "Referee.h"
 
 void* Thread_ReceiveQnARequests(void* _param) {
+  printf("[INFO] - A new Thread_ReceiveQnARequests as started!\n");
   TParam_ReceiveQnARequest* param = (TParam_ReceiveQnARequest*)_param;
 
-  int fdQnARequest_Read = open(FIFO_REFEREE, O_RDONLY);
-
-  if (fdQnARequest_Read == -1) {
-    free(param);
-    return (void*)EXIT_FAILURE;
-  }
-
   QnARequest request;
+
+  int fdQnARequest_Read;
+  bool closed = true;
   while (1) {
-    sleep(2);
+    if (closed) {
+      fdQnARequest_Read = open(FIFO_REFEREE, O_RDONLY);
+
+      if (fdQnARequest_Read == -1) {
+        free(param);
+        return (void*)EXIT_FAILURE;
+      }
+
+      closed = false;
+    }
     // Receive Question
     int readBytes = read(fdQnARequest_Read, &request, sizeof(QnARequest));
     // printf("\n\n\tB: %d\n", sizeof(QnARequest));
     // printf("\n\n\tRead B: %d\n", readBytes);
     if (readBytes != sizeof(QnARequest)) {
-      printf("\n\tReceived something but cannot read correctly");
-      printf("\n\tError: %d", errno);
+      printf("[WARNING] - No communication open, restarting comms\n");
+
+      close(fdQnARequest_Read);
+      closed = true;
       continue;
     }
 
@@ -71,6 +79,30 @@ void* Thread_ReceiveQnARequests(void* _param) {
   }
 
   close(fdQnARequest_Read);
+  free(param);
+  return (void*)EXIT_SUCCESS;
+}
+
+void* Thread_ReadFromGame(void* _param) {
+  TParam_ReadFromGame* param = (TParam_ReadFromGame*)_param;
+
+  printf("[Thread] - I have been created\n");
+
+  char buffer[STRING_LARGE];
+  int readBytes;
+  Player myPlayer = param->app->playerList[param->myPlayerIndex];
+  do {
+    printf("[Thread] - Waiting for a message\n");
+    readBytes = read(myPlayer.gameProc.fdReadFromGame, buffer, sizeof(buffer));
+    printf("[Thread] - I got a message!\n");
+
+    printf("[PARENT] I got %d bytes\n", readBytes);
+    printf("[PARENT] I read: %s\n", buffer);
+
+    memset(buffer, '\0', STRING_LARGE);
+  } while (readBytes >= 0);
+
+  close(myPlayer.gameProc.fdReadFromGame);
   free(param);
   return (void*)EXIT_SUCCESS;
 }

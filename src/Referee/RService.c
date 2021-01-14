@@ -34,7 +34,7 @@ bool Setup_Application(Application *app, int argc, char **argv) {
 
   for (int i = 0; i < app->referee.maxPlayers; i++) {
     memset(&app->playerList[i], '\0', sizeof(Player));
-    app->playerList[i].emptyStruct = true;
+    app->playerList[i].active = false;
   }
 
   Print_Application(app);
@@ -242,10 +242,9 @@ bool Service_PlayerLogin(Application *app, int procId, char *username) {
     return false;
   }
 
-  app->playerList[emptyIndex].emptyStruct = false;
+  app->playerList[emptyIndex].active = true;
   app->playerList[emptyIndex].procId = procId;
   strcpy(app->playerList[emptyIndex].username, username);
-  strcpy(app->playerList[emptyIndex].gamename, "Not yet developed");
 
   printf("\nNew player has logged in!\n");
   printf("\tUsername: %s\n", username);
@@ -299,7 +298,12 @@ PlayerInputResponse Service_HandlePlayerCommand(Application *app, int procId,
     }
 
     resp.playerInputResponseType = PIR_GAMENAME;
-    strcpy(resp.gameName, app->playerList[playerIndex].gamename);
+    if (app->playerList[playerIndex].gameProc.active) {
+      snprintf(resp.gameName, STRING_LARGE, "%s",
+               app->playerList[playerIndex].gameProc.gameName);
+    } else {
+      snprintf(resp.gameName, STRING_LARGE, "Currently not playing!");
+    }
   }
 
   return resp;
@@ -318,7 +322,9 @@ void Service_HandleSelfCommand(Application *app, char *command) {
   } else if (strcmp(commandName, "exit") == 0) {
     Service_Exit(app);
   } else if (strcmp(commandName, "t_opengame") == 0) {
-    Service_OpenGame(app);
+    if (app->playerList[0].active) {
+      Service_OpenGame(app, app->playerList[0].procId);
+    }
   }
 }
 
@@ -352,21 +358,27 @@ bool Service_KickPlayer(Application *app, char *username) {
 
 void Service_Exit(Application *app) {
   for (int i = 0; i < app->referee.maxPlayers; i++) {
-    if (!app->playerList[i].emptyStruct) {
+    if (app->playerList[i].active) {
       Service_KickPlayer(app, app->playerList[i].username);
     }
   }
   kill(getpid(), SIGUSR1);
 }
 
-void Service_OpenGame(Application *app) {
-  int Pipe_C2P[2];  // Child => Parent
-  int Pipe_P2C[2];  // Parent => Child
-
-  if (pipe(Pipe_C2P) == -1) {
+void Service_OpenGame(Application *app, int playerProcId) {
+  int playerIndex = getPlayerIndexByProcId(app, playerProcId);
+  if (playerIndex == -1) {
+    printf("[ERROR] - Tried to open a game for a non existing player!\n");
     return;
   }
-  if (pipe(Pipe_P2C) == -1) {
+
+  int fdGame2Referee[2];  // Child => Parent
+  int fdReferee2Game[2];  // Parent => Child
+
+  if (pipe(fdGame2Referee) == -1) {
+    return;
+  }
+  if (pipe(fdReferee2Game) == -1) {
     return;
   }
 
@@ -375,76 +387,55 @@ void Service_OpenGame(Application *app) {
     printf("[ERROR] - Fork failed!\n");
   }
 
+  int randomGameIndex = getRandomGameIndex(app);
+
   if (forkStatus == 0) {
-    close(Pipe_C2P[0]);  // Will not need C => P reading pipe
-    close(Pipe_P2C[1]);  // Will not need P => C writting pipe
+    close(fdGame2Referee[0]);  // Will not need G => R reading pipe
+    close(fdReferee2Game[1]);  // Will not need R => G writting pipe
 
     close(1);
-    dup(Pipe_C2P[1]);
+    dup(fdGame2Referee[1]);
 
     close(0);
-    dup(Pipe_P2C[0]);
-
-    // dup2(Pipe_P2C[0], 0);
-    // dup2(Pipe_C2P[1], 1);
-
-    // close(Pipe_C2P[0]);  // No longer needed | STDIN is the new C => P
-    // reading pipe
-    // close(Pipe_P2C[1]);  // No longer needed | STDOUT is the new P => C
-    // writting pipe
-
-    sleep(4);
-
-    char buffer[STRING_LARGE];
-    sprintf(buffer, "Children is sending a message\n");
-    write(STDOUT_FILENO, &buffer, STRING_LARGE);
-
-    sleep(2);
-
-    sprintf(buffer, "Children is sending a message AGAin\n");
-    write(STDOUT_FILENO, &buffer, STRING_LARGE);
+    dup(fdReferee2Game[0]);
 
     int gameIndex = getRandomGameIndex(app);
 
     char gamePath[STRING_LARGE];
     snprintf(gamePath, STRING_LARGE, "%s%s", app->referee.gameDir,
-             app->availableGames.gameList[getRandomGameIndex(app)].fileName);
+             app->availableGames.gameList[randomGameIndex].fileName);
 
-    fprintf(stderr, "[CHILDREN INFO] - My game path: %s\n", gamePath);
     if (execl(gamePath, gamePath, NULL) == -1) {
       fprintf(stderr, "[CHILDREN ERROR] - Execl failed! Error: %d\n", errno);
     }
     fprintf(stderr, "[CHILDREN ERROR] - I'm not supposed to be here\n");
-
   } else {
-    close(Pipe_C2P[1]);  // Will not need C => P writting pipe
-    close(Pipe_P2C[0]);  // Will not need P => C reading pipe
+    close(fdGame2Referee[1]);  // Will not need G => R writting pipe
+    close(fdReferee2Game[0]);  // Will not need R => G reading pipe
 
-    // char buffer[STRING_LARGE];
-    // if (read(Pipe_C2P[0], buffer, sizeof(buffer)) == -1) {
-    //   return;
-    // }
-    // printf("[PARENT] - I got %s\n", buffer);
-    // if (read(Pipe_C2P[0], buffer, sizeof(buffer)) == -1) {
-    //   return;
-    // }
-    // printf("[PARENT] - I got %s\n", buffer);
+    printf("Reached here\n");
 
-    char buffer[STRING_LARGE];
-    int readBytes;
-    do {
-      readBytes = read(Pipe_C2P[0], buffer, sizeof(buffer));
+    TParam_ReadFromGame *param = malloc(sizeof(TParam_ReadFromGame));
+    if (param == NULL) {
+      return;
+    }
 
-      printf("[PARENT] I got %d bytes\n", readBytes);
-      printf("[PARENT] I read: %s\n", buffer);
+    param->app = app;
+    param->myPlayerIndex = playerIndex;
+    if (pthread_create(&app->playerList[playerIndex].gameProc.gameHandleThread,
+                       NULL, &Thread_ReadFromGame, (void *)param) != 0) {
+      free(param);
+      return;
+    };
 
-      memset(buffer, '\0', STRING_LARGE);
-      sleep(1);
-    } while (readBytes >= 0);
+    app->playerList[playerIndex].gameProc.active = true;
+
+    app->playerList[playerIndex].gameProc.fdReadFromGame = fdGame2Referee[0];
+    app->playerList[playerIndex].gameProc.fdWriteToGame = fdReferee2Game[1];
+
+    snprintf(app->playerList[playerIndex].gameProc.gameName, STRING_MEDIUM,
+             "%s", app->availableGames.gameList[randomGameIndex].fileName);
   }
-
-  // printf("\n\n%s\n", app->referee.gameDir);
-  exit(1);
 }
 
 int getRandomGameIndex(Application *app) {
@@ -455,7 +446,7 @@ int getRandomGameIndex(Application *app) {
 
 int getPlayerListEmptyIndex(Application *app) {
   for (int i = 0; i < app->referee.maxPlayers; i++) {
-    if (app->playerList[i].emptyStruct) {
+    if (!app->playerList[i].active) {
       return i;
     }
   }
@@ -463,6 +454,10 @@ int getPlayerListEmptyIndex(Application *app) {
   return -1;
 }
 
+/**
+ * Returns found player index
+ * If not found, returns -1
+ */
 int getPlayerIndexByProcId(Application *app, int procId) {
   for (int i = 0; i < app->referee.maxPlayers; i++) {
     if (app->playerList[i].procId == procId) {
@@ -491,7 +486,7 @@ void Clean_Player(Application *app, int procId) {
 
   close(app->playerList[playerIndex].fdComm_Write);
   memset(&app->playerList[playerIndex], '\0', sizeof(Player));
-  app->playerList[playerIndex].emptyStruct = true;
+  app->playerList[playerIndex].active = false;
 }
 
 bool isValid_ChampionshipDuration(Application *app, int value) {
@@ -561,7 +556,7 @@ void Print_Application(Application *app) {
 void Print_PlayerList(Application *app) {
   printf("\n\tPlayer List\n");
   for (int i = 0; i < app->referee.maxPlayers; i++) {
-    if (app->playerList[i].emptyStruct) {
+    if (!app->playerList[i].active) {
       printf("\t\t[%02d] - EMPTY SLOT\n", i + 1);
     } else {
       printf("\t\t[%02d] - %s\n", i + 1, app->playerList[i].username);
