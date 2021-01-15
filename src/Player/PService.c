@@ -91,7 +91,6 @@ bool Service_Login(Application *app, char *username) {
     return false;
   };
 
-  pthread_join(currThread, NULL);
   return true;
 }
 

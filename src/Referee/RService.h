@@ -11,7 +11,8 @@ bool Setup_Threads(Application *app);
 bool isValid_ChampionshipDuration(Application *app, int value);
 bool isValid_WaitingDuration(Application *app, int value);
 
-bool Service_PlayerLogin(Application *app, int procId, char *username);
+PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
+                                            char *username);
 PlayerInputResponse Service_PlayerInput(Application *app, int procId,
                                         char *command);
 PlayerInputResponse Service_HandlePlayerCommand(Application *app, int procId,

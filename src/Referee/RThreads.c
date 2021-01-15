@@ -4,7 +4,6 @@
 #include "Referee.h"
 
 void* Thread_ReceiveQnARequests(void* _param) {
-  printf("[INFO] - A new Thread_ReceiveQnARequests as started!\n");
   TParam_ReceiveQnARequest* param = (TParam_ReceiveQnARequest*)_param;
 
   QnARequest request;
@@ -37,21 +36,25 @@ void* Thread_ReceiveQnARequests(void* _param) {
     // Send Answer
     TossComm tossComm;
     int playerIndex;
+    int failedPlayer_fdComm_Write = -1;
     switch (request.requestType) {
       case QnART_LOGIN:
-        if (Service_PlayerLogin(param->app, request.playerLoginRequest.procId,
-                                request.playerLoginRequest.username)) {
-          playerIndex = getPlayerIndexByProcId(
-              param->app, request.playerLoginRequest.procId);
+        tossComm.playerLoginResponse.playerLoginResponseType =
+            Service_PlayerLogin(param->app, request.playerLoginRequest.procId,
+                                request.playerLoginRequest.username);
+        tossComm.tossType = TCRT_LOGIN_RESP;
 
-          if (playerIndex == -1) {
-            continue;
+        if (tossComm.playerLoginResponse.playerLoginResponseType !=
+            PLR_SUCCESS) {
+          char playerFifoName[STRING_LARGE];
+          sprintf(playerFifoName, "%s_%d", FIFO_PLAYER,
+                  request.playerLoginRequest.procId);
+          failedPlayer_fdComm_Write = open(playerFifoName, O_RDWR);
+          if (failedPlayer_fdComm_Write == -1) {
+            printf("\t[ERROR] Unexpected error on open()!\n\t\tError: %d\n",
+                   errno);
+            return PLR_INVALID_UNDEFINED;
           }
-
-          tossComm.tossType = TCRT_LOGIN_RESP;
-          tossComm.playerLoginResponse.playerLoginResponseType = PLR_SUCCESS;
-        } else {
-          continue;
         }
         break;
       case QnART_INPUT: {
@@ -71,9 +74,18 @@ void* Thread_ReceiveQnARequests(void* _param) {
     }
 
     sem_wait(&param->app->playerList[playerIndex].semNamedPipe);
-    int writtenBytes = write(param->app->playerList[playerIndex].fdComm_Write,
-                             &tossComm, sizeof(TossComm));
+    int writtenBytes =
+        write(failedPlayer_fdComm_Write == -1
+                  ? param->app->playerList[playerIndex].fdComm_Write
+                  : failedPlayer_fdComm_Write,
+              &tossComm, sizeof(TossComm));
     sem_post(&param->app->playerList[playerIndex].semNamedPipe);
+
+    // Reset temp named pipe
+    if (failedPlayer_fdComm_Write != -1) {
+      close(failedPlayer_fdComm_Write);
+      failedPlayer_fdComm_Write = -1;
+    }
 
     if (writtenBytes != sizeof(TossComm)) {
       printf("TossComm failed\n");
@@ -87,8 +99,6 @@ void* Thread_ReceiveQnARequests(void* _param) {
 
 void* Thread_ReadFromGame(void* _param) {
   TParam_ReadFromGame* param = (TParam_ReadFromGame*)_param;
-
-  printf("[Thread] - I have been created\n");
 
   char buffer[STRING_LARGE];
   int readBytes;

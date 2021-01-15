@@ -50,6 +50,7 @@ enum PlayerLoginResponseType {
   PLR_SUCCESS,
   PLR_INVALID_UNDEFINED,
   PLR_INVALID_CLOSED,
+  PLR_INVALID_FULL,
   PLR_INVALID_EXISTS
 };
 struct PlayerLoginResponse {

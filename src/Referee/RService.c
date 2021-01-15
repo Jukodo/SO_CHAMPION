@@ -184,16 +184,6 @@ bool Setup_NamedPipes(Application *app) {
     }
   }
 
-  /**TAG_LOOKAT
-   * Is this needed?
-   * Virtual Client can be useful to keep the thread not blocked, but does it
-   * matter?
-   */
-  // if (open(FIFO_REFEREE, O_WRONLY) == -1) {
-  //   printf("\n\tUnexpected error on open()! Program will exit...");
-  //   return 1;
-  // }
-
   return true;
 }
 
@@ -214,32 +204,33 @@ bool Setup_Threads(Application *app) {
   return true;
 }
 
-bool Service_PlayerLogin(Application *app, int procId, char *username) {
+PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
+                                            char *username) {
   /**TAG_TODO
-   * Validate is Player is valid to login
+   * Validate if Player is valid to login
    * Conditions:
    *  - Championship is open for new players
-   *  - No duplicate username
    *  Check up and maybe other conditions
    */
 
+  // Check if player with same username already exists
   int emptyIndex = getPlayerListEmptyIndex(app);
-  if (emptyIndex == -1) {
-    return false;
+  if (getPlayerIndexByUsername(app, username) != -1) {
+    return PLR_INVALID_EXISTS;
   }
 
-  /**TAG_TODO
-   * Just open the fifo from the player: {FIFO_PLAYER}_{procId}
-   * Fifo is created by each player
-   */
+  // Check if an empty slot is available and get empty slot index (-1 if no slot
+  // available)
+  if (emptyIndex == -1) {
+    return PLR_INVALID_FULL;
+  }
 
   char playerFifoName[STRING_LARGE];
   sprintf(playerFifoName, "%s_%d", FIFO_PLAYER, procId);
   app->playerList[emptyIndex].fdComm_Write = open(playerFifoName, O_RDWR);
   if (app->playerList[emptyIndex].fdComm_Write == -1) {
-    printf("\tUnexpected error on open()!\n");
-    printf("\t\tError: %d\n", errno);
-    return false;
+    printf("\t[ERROR] Unexpected error on open()!\n\t\tError: %d\n", errno);
+    return PLR_INVALID_UNDEFINED;
   }
 
   app->playerList[emptyIndex].active = true;
@@ -248,11 +239,11 @@ bool Service_PlayerLogin(Application *app, int procId, char *username) {
            1);
   strcpy(app->playerList[emptyIndex].username, username);
 
-  printf("\nNew player has logged in!\n");
-  printf("\tUsername: %s\n", username);
-  printf("\tProcId: %d\n\n", procId);
+  printf("\n\t[INFO] New player has logged in!\n");
+  printf("\t\tUsername: %s\n", username);
+  printf("\t\tProcId: %d\n\n", procId);
 
-  return true;
+  return PLR_SUCCESS;
 }
 
 PlayerInputResponse Service_PlayerInput(Application *app, int procId,
@@ -262,24 +253,24 @@ PlayerInputResponse Service_PlayerInput(Application *app, int procId,
 
   int playerIndex = getPlayerIndexByProcId(app, procId);
   if (playerIndex == -1) {
-    printf("Could not find Player with procId:%d\n", procId);
+    printf("[WARNING] - Could not find Player with procId: %d\n", procId);
     return resp;
   }
   if (Utils_StringIsEmpty(command)) {
-    printf("Received command is empty\n");
+    printf("[WARNING] - Received command is empty\n");
     return resp;
   }
 
   // Check if received input is a command or an input directed to the game
   if (command[0] == '#') {
-    printf("Received a command: %s from Player with procId: %d\n", command,
-           procId);
+    printf("[INFO] - Received a command: %s from Player with procId: %d\n",
+           command, procId);
 
     resp = Service_HandlePlayerCommand(app, procId, command);
     return resp;
   } else {
-    printf("Received a game input: %s from Player with procId: %d\n", command,
-           procId);
+    printf("[INFO] - Received a game input: %s from Player with procId: %d\n",
+           command, procId);
 
     resp.playerInputResponseType = PIR_INPUT;
     return resp;
@@ -332,18 +323,19 @@ void Service_HandleSelfCommand(Application *app, char *command) {
 
 bool Service_KickPlayer(Application *app, char *username) {
   if (Utils_StringIsEmpty(username)) {
-    printf("Username is empty!\n");
+    printf("[WARNING] - Cannot kick player! Username parameter is empty...\n");
     return false;
   }
 
   int playerIndex = getPlayerIndexByUsername(app, username);
   if (playerIndex == -1) {
-    printf("Username is invalid!\n");
+    printf("[WARNING] - Cannot kick [%s]! Player could not be found...\n",
+           username);
     return false;
   }
 
-  printf("\nTrying to kick a player\n");
-  printf("\tUsername: %s\n", username);
+  printf("\n\t[INFO] - Kicking a player\n");
+  printf("\t\tUsername: %s\n", username);
   TossComm tossComm;
   tossComm.tossType = TCRT_INPUT_RESP;
   tossComm.playerInputResponse.playerInputResponseType = PIR_SHUTDOWN;
@@ -351,7 +343,7 @@ bool Service_KickPlayer(Application *app, char *username) {
   int writtenBytes = write(app->playerList[playerIndex].fdComm_Write, &tossComm,
                            sizeof(TossComm));
   if (writtenBytes != sizeof(TossComm)) {
-    printf("\nKick player has failed!\n");
+    printf("[ERROR] - Could not kick player %s! Error unknown...\n", username);
   }
 
   Clean_Player(app, app->playerList[playerIndex].procId);
@@ -408,14 +400,12 @@ void Service_OpenGame(Application *app, int playerProcId) {
              app->availableGames.gameList[randomGameIndex].fileName);
 
     if (execl(gamePath, gamePath, NULL) == -1) {
-      fprintf(stderr, "[CHILDREN ERROR] - Execl failed! Error: %d\n", errno);
+      fprintf(stderr, "[ERROR] - Execl failed! Error: %d\n", errno);
     }
-    fprintf(stderr, "[CHILDREN ERROR] - I'm not supposed to be here\n");
+    fprintf(stderr, "[ERROR] - I'm not supposed to be here\n");
   } else {
     close(fdGame2Referee[1]);  // Will not need G => R writting pipe
     close(fdReferee2Game[0]);  // Will not need R => G reading pipe
-
-    printf("Reached here\n");
 
     TParam_ReadFromGame *param = malloc(sizeof(TParam_ReadFromGame));
     if (param == NULL) {
@@ -446,6 +436,10 @@ int getRandomGameIndex(Application *app) {
   return rand() % app->availableGames.quantityGames;
 }
 
+/**
+ * Returns empty player index
+ * If max players is reached, returns -1
+ */
 int getPlayerListEmptyIndex(Application *app) {
   for (int i = 0; i < app->referee.maxPlayers; i++) {
     if (!app->playerList[i].active) {
@@ -470,6 +464,10 @@ int getPlayerIndexByProcId(Application *app, int procId) {
   return -1;
 }
 
+/**
+ * Returns found player index
+ * If not found, returns -1
+ */
 int getPlayerIndexByUsername(Application *app, char *username) {
   for (int i = 0; i < app->referee.maxPlayers; i++) {
     if (strcmp(app->playerList[i].username, username) == 0) {
@@ -494,22 +492,22 @@ void Clean_Player(Application *app, int procId) {
 bool isValid_ChampionshipDuration(Application *app, int value) {
   // App already registered a championship duration
   if (app->referee.championshipDuration > 0) {
-    printf("\n\tDuplicate parameter! Program will exit...");
+    printf("\n[ERROR] - Duplicate parameter! Program will exit...");
     return false;
   }
 
   if (value < MIN_CHAMP_DURATION) {
     printf(
-        "\n\tChampionship duration cannot be lower than %d! Program will "
-        "exit...",
+        "\n[ERROR] - Championship duration cannot be lower than %d! Program "
+        "will exit...",
         MIN_CHAMP_DURATION);
     return false;
   }
 
   if (value > MAX_CHAMP_DURATION) {
     printf(
-        "\n\tChampionship duration cannot be higher than %d! Program will "
-        "exit...",
+        "\n[ERROR] - Championship duration cannot be higher than %d! Program "
+        "will exit...",
         MAX_CHAMP_DURATION);
     return false;
   }
@@ -520,13 +518,13 @@ bool isValid_ChampionshipDuration(Application *app, int value) {
 bool isValid_WaitingDuration(Application *app, int value) {
   // App already registered a championship duration
   if (app->referee.waitingDuration > 0) {
-    printf("\n\tDuplicate parameter! Program will exit...");
+    printf("\n[ERROR] - Duplicate parameter! Program will exit...");
     return false;
   }
 
   if (value < MIN_WAITING_DURATION) {
     printf(
-        "\n\tWaiting duration cannot be lower than %d! Program will "
+        "\n[ERROR] - Waiting duration cannot be lower than %d! Program will "
         "exit...",
         MIN_WAITING_DURATION);
     return false;
@@ -534,7 +532,7 @@ bool isValid_WaitingDuration(Application *app, int value) {
 
   if (value > MAX_WAITING_DURATION) {
     printf(
-        "\n\tWaiting duration cannot be higher than %d! Program will "
+        "\n[ERROR] - Waiting duration cannot be higher than %d! Program will "
         "exit...",
         MAX_WAITING_DURATION);
     return false;

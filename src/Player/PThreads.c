@@ -35,7 +35,31 @@ void* Thread_ReceiveComms(void* _param) {
 
     switch (receivedTossComm.tossType) {
       case TCRT_LOGIN_RESP:
-        param->app->player.loggedIn = true;
+        switch (receivedTossComm.playerLoginResponse.playerLoginResponseType) {
+          case PLR_SUCCESS:
+            param->app->player.loggedIn = true;
+            break;
+          case PLR_INVALID_EXISTS:
+            param->app->player.loggedIn = false;
+            printf(
+                "[WARNING] - Player with the same username already "
+                "exists!\nTry again with another username...\n");
+            break;
+          case PLR_INVALID_FULL:
+            param->app->player.loggedIn = false;
+            printf("[WARNING] - Player queue is full! Try again later...\n");
+            break;
+          case PLR_INVALID_CLOSED:
+            param->app->player.loggedIn = false;
+            printf(
+                "[WARNING] - A championship is running at the moment or not "
+                "accepting players by choice! Try again later...\n");
+            break;
+          default:
+            param->app->player.loggedIn = false;
+            printf("[ERROR] - Unhandled login response!\n");
+            break;
+        }
         pthread_mutex_unlock(param->app->mutexHandles.hMutex_LoggedIn);
         break;
       case TCRT_INPUT_RESP:
