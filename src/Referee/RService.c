@@ -244,6 +244,8 @@ bool Service_PlayerLogin(Application *app, int procId, char *username) {
 
   app->playerList[emptyIndex].active = true;
   app->playerList[emptyIndex].procId = procId;
+  sem_init(&app->playerList[emptyIndex].semNamedPipe, PTHREAD_PROCESS_PRIVATE,
+           1);
   strcpy(app->playerList[emptyIndex].username, username);
 
   printf("\nNew player has logged in!\n");

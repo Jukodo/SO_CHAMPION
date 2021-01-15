@@ -19,6 +19,8 @@ typedef struct PlayerLoginResponse PlayerLoginResponse;
 typedef enum PlayerInputResponseType PlayerInputResponseType;
 typedef struct PlayerInputResponse PlayerInputResponse;
 
+typedef struct GameOutput GameOutput;
+
 // TossComm Types Enums
 typedef enum TossCommType TossCommType;
 
@@ -62,15 +64,17 @@ enum PlayerInputResponseType {
 };
 struct PlayerInputResponse {
   PlayerInputResponseType playerInputResponseType;
-  union {
-    char gameName[STRING_LARGE];
-  };
+  char gameName[STRING_LARGE];
 };
 
+struct GameOutput {
+  char output[STRING_LARGE];
+};
 // TossComm Types Enums
 enum TossCommType {
   TCRT_LOGIN_RESP,
   TCRT_INPUT_RESP,
+  TCRT_GAME_OUTPUT,
 };
 
 // Core Structs
@@ -85,6 +89,7 @@ struct TossComm {
   union {
     PlayerLoginResponse playerLoginResponse;
     PlayerInputResponse playerInputResponse;
+    GameOutput gameOutput;
   };
   TossCommType tossType;
 };

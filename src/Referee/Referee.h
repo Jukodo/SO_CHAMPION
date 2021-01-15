@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,6 +64,7 @@ struct Player {
 
   GameProc gameProc;
   int fdComm_Write;
+  sem_t semNamedPipe;
 };
 
 struct Referee {

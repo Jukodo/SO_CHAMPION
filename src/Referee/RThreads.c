@@ -70,8 +70,10 @@ void* Thread_ReceiveQnARequests(void* _param) {
         continue;
     }
 
+    sem_wait(&param->app->playerList[playerIndex].semNamedPipe);
     int writtenBytes = write(param->app->playerList[playerIndex].fdComm_Write,
                              &tossComm, sizeof(TossComm));
+    sem_post(&param->app->playerList[playerIndex].semNamedPipe);
 
     if (writtenBytes != sizeof(TossComm)) {
       printf("TossComm failed\n");
@@ -91,13 +93,19 @@ void* Thread_ReadFromGame(void* _param) {
   char buffer[STRING_LARGE];
   int readBytes;
   Player myPlayer = param->app->playerList[param->myPlayerIndex];
+  TossComm tossComm;
+  tossComm.tossType = TCRT_GAME_OUTPUT;
   do {
-    printf("[Thread] - Waiting for a message\n");
-    readBytes = read(myPlayer.gameProc.fdReadFromGame, buffer, sizeof(buffer));
-    printf("[Thread] - I got a message!\n");
+    readBytes = read(myPlayer.gameProc.fdReadFromGame,
+                     tossComm.gameOutput.output, sizeof(tossComm.gameOutput));
 
-    printf("[PARENT] I got %d bytes\n", readBytes);
-    printf("[PARENT] I read: %s\n", buffer);
+    sem_wait(&param->app->playerList[param->myPlayerIndex].semNamedPipe);
+
+    int writtenBytes =
+        write(param->app->playerList[param->myPlayerIndex].fdComm_Write,
+              &tossComm, sizeof(TossComm));
+
+    sem_post(&param->app->playerList[param->myPlayerIndex].semNamedPipe);
 
     memset(buffer, '\0', STRING_LARGE);
   } while (readBytes >= 0);

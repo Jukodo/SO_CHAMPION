@@ -49,11 +49,17 @@ void* Thread_ReceiveComms(void* _param) {
                    receivedTossComm.playerInputResponse.gameName);
             break;
           default:
-            printf("I received something that I can't handle");
+            printf(
+                "[WARNING] - I received something from TCRT_INPUT_RESP that I "
+                "can't handle\n");
             break;
         }
         break;
+      case TCRT_GAME_OUTPUT:
+        printf("\n\n\t[GAME] - %s", receivedTossComm.gameOutput.output);
+        break;
       default:
+        printf("[WARNING] - I got information but it is unhandled!\n");
         break;
     }
   }
