@@ -272,6 +272,12 @@ PlayerInputResponse Service_PlayerInput(Application *app, int procId,
     printf("[INFO] - Received a game input: %s from Player with procId: %d\n",
            command, procId);
 
+    Player player = app->playerList[getPlayerIndexByProcId(app, procId)];
+    printf("[INFO] - Trying to write %s to game of player [%s]\n", command,
+           player.username);
+    if (write(player.gameProc.fdWriteToGame, command, STRING_LARGE) == -1) {
+      printf("[ERROR] - Could not write to game... Error: %d", errno);
+    }
     resp.playerInputResponseType = PIR_INPUT;
     return resp;
   }

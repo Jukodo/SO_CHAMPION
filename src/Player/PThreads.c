@@ -80,7 +80,7 @@ void* Thread_ReceiveComms(void* _param) {
         }
         break;
       case TCRT_GAME_OUTPUT:
-        printf("\n\n\t[GAME] - %s", receivedTossComm.gameOutput.output);
+        printf("%s", receivedTossComm.gameOutput.output);
         break;
       default:
         printf("[WARNING] - I got information but it is unhandled!\n");

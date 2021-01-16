@@ -23,8 +23,6 @@ void* Thread_ReceiveQnARequests(void* _param) {
     }
     // Receive Question
     int readBytes = read(fdQnARequest_Read, &request, sizeof(QnARequest));
-    // printf("\n\n\tB: %d\n", sizeof(QnARequest));
-    // printf("\n\n\tRead B: %d\n", readBytes);
     if (readBytes != sizeof(QnARequest)) {
       printf("[WARNING] - No communication open, restarting comms\n");
 

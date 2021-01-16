@@ -23,81 +23,97 @@ void Setup_SIGUSR1() {
 }
 
 void Print_Introduction() {
-  printf("\nHello! Welcome to the %s!", GAME_TITLE);
-  printf("\nThe game flow is: ");
-  printf("\n\t - A random number will be generated from 1 to 9");
-  printf("\n\t - You, the player, will have to guess it");
-  printf("\n\t - Each correct guess will increase your score by 1");
-  printf("\n\t - If you choose to play again, the number will change");
-  printf("\n\t - The number only changes when you guess it");
+  char bufSTDOUT[STRING_LARGE];
+
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT, "\nHello! Welcome to the %s!\n", GAME_TITLE);
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT, "\tThe game flow is: \n");
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT, "\t - A random number will be generated from 1 to 9\n");
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT, "\t - You, the player, will have to guess it\n");
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT, "\t - Each correct guess will increase your score by 1\n");
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT,
+          "\t - If you choose to play again, the number will change\n");
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT, "\t - The number only changes when you guess it\n");
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT, "\t - To leave press CTRL-C or type #quit\n");
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
 }
 
 int main(int argc, char **argv) {
-  char buffer[STRING_LARGE];
-  memset(buffer, '\0', STRING_LARGE);
-  sprintf(buffer, "Children is sending a message AGAin but from game\n");
-  write(STDOUT_FILENO, &buffer, sizeof(buffer));
-  memset(buffer, '\0', STRING_LARGE);
-  sprintf(buffer, "Children is sending a message AGAin but from game AGAIn\n");
-  write(STDOUT_FILENO, &buffer, sizeof(buffer));
-
-  fprintf(stdout, "I work well\n");
-  printf("I work well\n");
-
-  char aff[STRING_LARGE];
-  memset(aff, '\0', STRING_LARGE);
-  sprintf(aff, "Lmao they dont work but i do\n");
-  write(STDOUT_FILENO, &aff, sizeof(aff));
+  char bufSTDOUT[STRING_LARGE];
+  char bufSTDIN[STRING_LARGE];
 
   Setup_SIGUSR1();
 
   Print_Introduction();
-
-  char line[STRING_MEDIUM];
-
-  printf("\n\tPlease press ENTER when you are ready to start!");
-  getchar();
 
   bool flag_leave = true;
 
   while (true) {
     srand(time(0));
     int number = (rand() % 9) + 1;
-    printf("\nCurrent score: %d\n", score);
-    while (true) {
-      printf("\n\t-> ");
-      scanf("%[^\n]", line);
-      Utils_CleanStdin();
 
-      if (atoi(line) == number) {
+    memset(bufSTDOUT, '\0', STRING_LARGE);
+    sprintf(bufSTDOUT, "\n\tCurrent score: %d\n", score);
+    write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+    while (true) {
+      memset(bufSTDOUT, '\0', STRING_LARGE);
+      sprintf(bufSTDOUT, "\tPick a number: \n");
+      write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+      memset(bufSTDIN, '\0', STRING_LARGE);
+      read(STDIN_FILENO, bufSTDIN, STRING_LARGE);
+
+      if (atoi(bufSTDIN) == number) {
         score++;
 
-        printf("\tYou got it!\n\tPlay again? (n/N to leave):");
-        printf("\n\t-> ");
+        memset(bufSTDOUT, '\0', STRING_LARGE);
+        sprintf(bufSTDOUT, "\tYou got it! +1 score! Keep going...\n");
+        write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
 
-        scanf("%[^\n]", line);
-        Utils_CleanStdin();
-
-        flag_leave = strcmp(line, "n") == 0 || strcmp(line, "N") == 0;
         break;
       } else {
-        printf("\tWrong...\n");
-        if (abs(atoi(line) - number) <= 2) {
-          printf("\tPretty close though!\n");
+        memset(bufSTDOUT, '\0', STRING_LARGE);
+        sprintf(bufSTDOUT, "\tWrong...\n");
+        write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
+
+        if (abs(atoi(bufSTDIN) - number) <= 2) {
+          memset(bufSTDOUT, '\0', STRING_LARGE);
+          sprintf(bufSTDOUT, "\tPretty close though!\n");
+          write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
         }
       }
     }
-
-    if (flag_leave) {
-      break;
-    }
   }
 
-  printf("\n\nThank you for playing %s!", GAME_TITLE);
-  printf("\n\tYour final score: %d", score);
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT, "\nThank you for playing %s!\n");
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
 
-  printf("\n\nPress ENTER when you are ready to leave...");
-  getchar();
+  memset(bufSTDOUT, '\0', STRING_LARGE);
+  sprintf(bufSTDOUT, "\tYour final score: %d\n", score);
+  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
 
   return false;
 }
