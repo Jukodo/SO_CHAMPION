@@ -53,7 +53,7 @@ void* Thread_ReceiveQnARequests(void* _param) {
           if (failedPlayer_fdComm_Write == -1) {
             printf("\t[ERROR] Unexpected error on open()!\n\t\tError: %d\n",
                    errno);
-            return PLR_INVALID_UNDEFINED;
+            continue;
           }
         }
         break;
@@ -73,6 +73,8 @@ void* Thread_ReceiveQnARequests(void* _param) {
         continue;
     }
 
+    playerIndex =
+        getPlayerIndexByProcId(param->app, request.playerLoginRequest.procId);
     sem_wait(&param->app->playerList[playerIndex].semNamedPipe);
     int writtenBytes =
         write(failedPlayer_fdComm_Write == -1
