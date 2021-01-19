@@ -72,6 +72,8 @@ struct Referee {
   char gameDir[STRING_MEDIUM];
   int maxPlayers;
 
+  bool isChampionshipClosed;
+
   int championshipDuration;
   int waitingDuration;
 };

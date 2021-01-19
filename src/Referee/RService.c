@@ -9,6 +9,7 @@ bool Setup_Application(Application *app, int argc, char **argv) {
 
   app->availableGames.gameList = NULL;
   app->availableGames.quantityGames = 0;
+  app->referee.isChampionshipClosed = false;
 
   memset(app->referee.gameDir, '\0', STRING_MEDIUM);
   app->referee.maxPlayers = 0;
@@ -231,12 +232,10 @@ bool Setup_Threads(Application *app) {
 
 PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
                                             char *username) {
-  /**TAG_TODO
-   * Validate if Player is valid to login
-   * Conditions:
-   *  - Championship is open for new players
-   *  Check up and maybe other conditions
-   */
+  // Check if championship is closed
+  if (app->referee.isChampionshipClosed) {
+    return PLR_INVALID_CLOSED;
+  }
 
   // Check if player with same username already exists
   int emptyIndex = getPlayerListEmptyIndex(app);
@@ -271,6 +270,10 @@ PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
   printf("\n\t[INFO] New player has logged in!\n");
   printf("\t\tUsername: %s\n", username);
   printf("\t\tProcId: %d\n\n", procId);
+
+  if (getQuantityPlayers(app) >= DEFAULT_MINPLAYERS_START) {
+    sem_post(&app->semStartChampionship);
+  }
 
   return PLR_SUCCESS;
 }
@@ -487,6 +490,13 @@ void Service_WaitCountdown(Application *app) {
   printf("[INFO] - Timer ended\n");
 }
 
+void Service_BroadcastChampionshipState(Application *app) {
+  printf("[INFO] - I gotta broadcast information to all players\n");
+}
+
+/**
+ * Get a random game index from avaliable games
+ */
 int getRandomGameIndex(Application *app) {
   srand(time(NULL));
 

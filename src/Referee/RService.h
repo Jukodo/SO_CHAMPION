@@ -22,6 +22,7 @@ bool Service_KickPlayer(Application *app, char *username);
 void Service_Exit(Application *app);
 void Service_OpenGame(Application *app, int playerProcId);
 void Service_WaitCountdown(Application *app);
+void Service_BroadcastChampionshipState(Application *app);
 
 int getRandomGameIndex(Application *app);
 int getPlayerListEmptyIndex(Application *app);
