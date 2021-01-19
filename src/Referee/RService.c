@@ -13,6 +13,13 @@ bool Setup_Application(Application *app, int argc, char **argv) {
   memset(app->referee.gameDir, '\0', STRING_MEDIUM);
   app->referee.maxPlayers = 0;
 
+  if (sem_init(&app->semCountdown, PTHREAD_PROCESS_PRIVATE, 0) == -1) {
+    printf("[ERROR] - Timer init failed! Error: %d", errno);
+  }
+  if (sem_init(&app->semStartChampionship, PTHREAD_PROCESS_PRIVATE, 0) == -1) {
+    printf("[ERROR] - Championship flag init failed! Error: %d", errno);
+  }
+
   if (!Setup_Variables(app, argc, argv)) {
     return false;
   }
@@ -188,18 +195,36 @@ bool Setup_NamedPipes(Application *app) {
 }
 
 bool Setup_Threads(Application *app) {
-  TParam_ReceiveQnARequest *param = malloc(sizeof(TParam_ReceiveQnARequest));
-  if (param == NULL) {
+#pragma region Receive QnA Request
+  TParam_ReceiveQnARequest *param_qna =
+      malloc(sizeof(TParam_ReceiveQnARequest));
+  if (param_qna == NULL) {
     return false;
   }
 
-  param->app = app;
+  param_qna->app = app;
 
   if (pthread_create(&app->threadHandles.hQnARequests, NULL,
-                     &Thread_ReceiveQnARequests, (void *)param) != 0) {
-    free(param);
+                     &Thread_ReceiveQnARequests, (void *)param_qna) != 0) {
+    free(param_qna);
     return false;
   };
+#pragma endregion
+
+#pragma region Championship flow
+  TParam_ChampionshipFlow *param_csf = malloc(sizeof(TParam_ChampionshipFlow));
+  if (param_csf == NULL) {
+    return false;
+  }
+
+  param_csf->app = app;
+
+  if (pthread_create(&app->threadHandles.hChampionshipFlow, NULL,
+                     &Thread_ChampionshipFlow, (void *)param_csf) != 0) {
+    free(param_csf);
+    return false;
+  };
+#pragma endregion
 
   return true;
 }
@@ -232,11 +257,15 @@ PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
     printf("\t[ERROR] Unexpected error on open()!\n\t\tError: %d\n", errno);
     return PLR_INVALID_UNDEFINED;
   }
+  if (sem_init(&app->playerList[emptyIndex].semNamedPipe,
+               PTHREAD_PROCESS_PRIVATE, 1) == -1) {
+    printf("[ERROR] - Could not init semaphore! Error: %d", errno);
+    close(app->playerList[emptyIndex].fdComm_Write);
+    return PLR_INVALID_UNDEFINED;
+  };
 
   app->playerList[emptyIndex].active = true;
   app->playerList[emptyIndex].procId = procId;
-  sem_init(&app->playerList[emptyIndex].semNamedPipe, PTHREAD_PROCESS_PRIVATE,
-           1);
   strcpy(app->playerList[emptyIndex].username, username);
 
   printf("\n\t[INFO] New player has logged in!\n");
@@ -324,6 +353,14 @@ void Service_HandleSelfCommand(Application *app, char *command) {
     if (app->playerList[0].active) {
       Service_OpenGame(app, app->playerList[0].procId);
     }
+  } else if (strcmp(commandName, "t_wait") == 0) {
+    Service_WaitCountdown(app);
+  } else if (strcmp(commandName, "t_unlockcsf") == 0) {
+    sem_post(&app->semStartChampionship);
+  } else if (strcmp(commandName, "t_unlocklb") == 0) {
+    sem_post(&app->semCountdown);
+  } else if (strcmp(commandName, "t_unlockcs") == 0) {
+    sem_post(&app->semCountdown);
   }
 }
 
@@ -436,6 +473,20 @@ void Service_OpenGame(Application *app, int playerProcId) {
   }
 }
 
+void Service_WaitCountdown(Application *app) {
+  struct timespec ts;
+
+  if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+    perror("clock_gettime");
+    exit(EXIT_FAILURE);
+  }
+  ts.tv_sec += 10;
+
+  printf("[INFO] - Waiting for timer\n");
+  sem_timedwait(&app->semCountdown, &ts);
+  printf("[INFO] - Timer ended\n");
+}
+
 int getRandomGameIndex(Application *app) {
   srand(time(NULL));
 
@@ -484,6 +535,24 @@ int getPlayerIndexByUsername(Application *app, char *username) {
   return -1;
 }
 
+/**
+ * Returns quantity of registered players
+ */
+int getQuantityPlayers(Application *app) {
+  int quantity = 0;
+
+  for (int i = 0; i < app->referee.maxPlayers; i++) {
+    if (app->playerList[i].active) {
+      quantity++;
+    }
+  }
+
+  return quantity;
+}
+
+/**
+ * Cleans memory which currently holds player with procId received
+ */
 void Clean_Player(Application *app, int procId) {
   int playerIndex = getPlayerIndexByProcId(app, procId);
   if (playerIndex == -1) {
@@ -495,6 +564,9 @@ void Clean_Player(Application *app, int procId) {
   app->playerList[playerIndex].active = false;
 }
 
+/**
+ * Validates received championship duration
+ */
 bool isValid_ChampionshipDuration(Application *app, int value) {
   // App already registered a championship duration
   if (app->referee.championshipDuration > 0) {
@@ -521,6 +593,9 @@ bool isValid_ChampionshipDuration(Application *app, int value) {
   return true;
 }
 
+/**
+ * Validates received waiting duration
+ */
 bool isValid_WaitingDuration(Application *app, int value) {
   // App already registered a championship duration
   if (app->referee.waitingDuration > 0) {
@@ -547,6 +622,9 @@ bool isValid_WaitingDuration(Application *app, int value) {
   return true;
 }
 
+/**
+ * Print application data
+ */
 void Print_Application(Application *app) {
   printf("\n\nMyApplication");
   printf("\n\tChampionship duration: %d", app->referee.championshipDuration);
@@ -559,6 +637,9 @@ void Print_Application(Application *app) {
   printf("\n");
 }
 
+/**
+ * Print player list
+ */
 void Print_PlayerList(Application *app) {
   printf("\n\tPlayer List\n");
   for (int i = 0; i < app->referee.maxPlayers; i++) {
@@ -570,6 +651,9 @@ void Print_PlayerList(Application *app) {
   }
 }
 
+/**
+ * Print available game list
+ */
 void Print_AvailableGameList(Application *app) {
   printf("\n\tAvailable Game List\n");
   for (int i = 0; i < app->availableGames.quantityGames; i++) {

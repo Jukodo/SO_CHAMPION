@@ -19,6 +19,7 @@
 
 #define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Execs/Games/"
 #define DEFAULT_MAXPLAYER 10
+#define DEFAULT_MINPLAYERS_START 2
 
 #define MIN_CHAMP_DURATION 60000
 #define MAX_CHAMP_DURATION 600000
@@ -82,6 +83,7 @@ struct AvailableGames {
 
 struct ThreadHandles {
   pthread_t hQnARequests;
+  pthread_t hChampionshipFlow;
 };
 
 struct Application {
@@ -90,4 +92,6 @@ struct Application {
   Player* playerList;
 
   ThreadHandles threadHandles;
+  sem_t semCountdown;
+  sem_t semStartChampionship;
 };

@@ -124,3 +124,49 @@ void* Thread_ReadFromGame(void* _param) {
   free(param);
   return (void*)EXIT_SUCCESS;
 }
+
+void* Thread_ChampionshipFlow(void* _param) {
+  printf("[INFO] - Championship flow thread has started!\n");
+  TParam_ChampionshipFlow* param = (TParam_ChampionshipFlow*)_param;
+
+  bool canStart = false;
+  struct timespec ts;
+  do {
+    printf("[INFO] - Championship is ready to start!\n");
+    // Only unlocked when at least 2 players have joined
+    sem_wait(&param->app->semStartChampionship);
+
+    // Start a timer to wait for more players
+
+    if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+      printf("[ERROR] - Clock getTime failed! Error: %d\n", perror);
+      return (void*)EXIT_FAILURE;
+    }
+    ts.tv_sec += param->app->referee.waitingDuration;
+
+    printf("[INFO] - Waiting for players for %d seconds\n",
+           param->app->referee.waitingDuration);
+    sem_timedwait(&param->app->semCountdown, &ts);
+    printf("[INFO] - Lobby has closed! Currently active players: %d\n",
+           getQuantityPlayers(param->app));
+
+    // After the timer ends, check if at least 2 players are logged in, if not
+    // restart championship to initial state
+    // canStart = getQuantityPlayers(param->app) >= DEFAULT_MINPLAYERS_START;
+    canStart = true;
+  } while (!canStart);
+
+  if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+    printf("[ERROR] - Clock getTime failed! Error: %d\n", perror);
+    return (void*)EXIT_FAILURE;
+  }
+  ts.tv_sec += param->app->referee.championshipDuration;
+
+  printf("[INFO] - Championship has started! Ending in %d seconds...\n",
+         param->app->referee.championshipDuration);
+  sem_timedwait(&param->app->semCountdown, &ts);
+  printf("[INFO] - Championship ended!\n");
+
+  free(param);
+  return (void*)EXIT_SUCCESS;
+}

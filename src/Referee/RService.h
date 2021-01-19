@@ -21,11 +21,13 @@ void Service_HandleSelfCommand(Application *app, char *command);
 bool Service_KickPlayer(Application *app, char *username);
 void Service_Exit(Application *app);
 void Service_OpenGame(Application *app, int playerProcId);
+void Service_WaitCountdown(Application *app);
 
 int getRandomGameIndex(Application *app);
 int getPlayerListEmptyIndex(Application *app);
 int getPlayerIndexByProcId(Application *app, int procId);
 int getPlayerIndexByUsername(Application *app, char *username);
+int getQuantityPlayers(Application *app);
 void Clean_Player(Application *app, int procId);
 
 void Print_Application(Application *app);
