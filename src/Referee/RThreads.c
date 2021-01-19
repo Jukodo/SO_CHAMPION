@@ -159,7 +159,7 @@ void* Thread_ChampionshipFlow(void* _param) {
       canStart = getQuantityPlayers(param->app) >= DEFAULT_MINPLAYERS_START;
 
       if (!canStart) {
-        Service_BroadcastChampionshipState(param->app);
+        Service_BroadcastChampionshipState(param->app, 3);
       }
     } while (!canStart);
 

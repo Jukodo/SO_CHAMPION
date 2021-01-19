@@ -21,8 +21,7 @@ void Service_HandleSelfCommand(Application *app, char *command);
 bool Service_KickPlayer(Application *app, char *username);
 void Service_Exit(Application *app);
 void Service_OpenGame(Application *app, int playerProcId);
-void Service_WaitCountdown(Application *app);
-void Service_BroadcastChampionshipState(Application *app);
+void Service_BroadcastChampionshipState(Application *app, int state);
 
 int getRandomGameIndex(Application *app);
 int getPlayerListEmptyIndex(Application *app);

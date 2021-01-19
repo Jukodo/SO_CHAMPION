@@ -356,8 +356,6 @@ void Service_HandleSelfCommand(Application *app, char *command) {
     if (app->playerList[0].active) {
       Service_OpenGame(app, app->playerList[0].procId);
     }
-  } else if (strcmp(commandName, "t_wait") == 0) {
-    Service_WaitCountdown(app);
   } else if (strcmp(commandName, "t_unlockcsf") == 0) {
     sem_post(&app->semStartChampionship);
   } else if (strcmp(commandName, "t_unlocklb") == 0) {
@@ -476,22 +474,47 @@ void Service_OpenGame(Application *app, int playerProcId) {
   }
 }
 
-void Service_WaitCountdown(Application *app) {
-  struct timespec ts;
+void Service_BroadcastChampionshipState(Application *app, int state) {
+  TossComm tossComm;
+  tossComm.tossType = TCRT_CHAMPIONSHIP_MSG;
 
-  if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
-    perror("clock_gettime");
-    exit(EXIT_FAILURE);
+  switch (state) {
+    case 1:
+      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
+               "THE WINNER IS.........\n");
+      break;
+    case 2:
+      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
+               "Championship has started\n");
+      break;
+    case 3:
+      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
+               "Championship has been canceled due to lack of players\n");
+      break;
+    case 4:
+      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
+               "Waiting %d seconds for more players\n",
+               app->referee.waitingDuration);
+      break;
+    case 5:
+      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
+               "Championship is now full! Starting...\n");
+      break;
+    default:
+      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
+               "I forgot what i was about to say...\n");
+      break;
   }
-  ts.tv_sec += 10;
-
-  printf("[INFO] - Waiting for timer\n");
-  sem_timedwait(&app->semCountdown, &ts);
-  printf("[INFO] - Timer ended\n");
-}
-
-void Service_BroadcastChampionshipState(Application *app) {
-  printf("[INFO] - I gotta broadcast information to all players\n");
+  for (int i = 0; i < app->referee.maxPlayers; i++) {
+    if (app->playerList[i].active) {
+      int writtenBytes =
+          write(app->playerList[i].fdComm_Write, &tossComm, sizeof(TossComm));
+      if (writtenBytes <= 0) {
+        printf("[ERROR] Could not broadcast to %s... Error: %d\n",
+               app->playerList[i].username, errno);
+      }
+    }
+  }
 }
 
 /**
