@@ -33,8 +33,9 @@ struct Player {
 
 struct NamedPipeHandles {
   int fdQnARequest_Write;  // Writes QnA Requests to Referee
-  int fdComm_Read;  // Reads Communication Messages from Referee directed to
-                    // self
+  int fdComm_Read;   // Reads Communication Messages from Referee directed to
+                     // self
+  int fdComm_Write;  // His own private named pipe to server
 };
 
 struct ThreadHandles {

@@ -177,3 +177,43 @@ void* Thread_ChampionshipFlow(void* _param) {
   free(param);
   return (void*)EXIT_SUCCESS;
 }
+
+void* Thread_AwakePlayer(void* _param) {
+  TParam_AwakePlayer* param = (TParam_AwakePlayer*)_param;
+  Player myPlayer = param->app->playerList[param->myPlayerIndex];
+  printf("[DEBUG] - AwakePlayer thread has started for player %s\n",
+         myPlayer.username);
+
+  // Open player status named pipe (A resting named pipe to be broken when a
+  // player leaves)
+  char fifoName_PlayerRead[STRING_LARGE];
+  sprintf(fifoName_PlayerRead, "%s_%d", FIFO_PLAYER_TO_REFEREE,
+          myPlayer.procId);
+
+  printf("[DEBUG] - Trying to open a named pipe named %s\n",
+         fifoName_PlayerRead);
+
+  myPlayer.fdAwake = open(fifoName_PlayerRead, O_RDONLY);
+  if (myPlayer.fdAwake == -1) {
+    printf("[ERROR] Unexpected error on open()! Error: %d\n", errno);
+    return (void*)EXIT_FAILURE;
+  }
+  printf("[DEBUG] - Named pipe of players %s has his write side open now!\n",
+         myPlayer.username);
+
+  // Start cycle and only stops when broken
+  char buffer[STRING_LARGE];
+  int readBytes;
+  do {
+    readBytes = read(myPlayer.fdAwake, buffer, STRING_LARGE);
+
+    printf("[DEBUG] - Read %d bytes!\n", readBytes);
+  } while (readBytes > 0);
+
+  printf("[DEBUG] - Lost connection to player %s! Logging him out...\n",
+         myPlayer.username);
+
+  close(myPlayer.fdAwake);
+  free(param);
+  return (void*)EXIT_SUCCESS;
+}

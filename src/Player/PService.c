@@ -25,31 +25,42 @@ bool Setup_Application(Application *app) {
 }
 
 bool Setup_NamedPipes(Application *app) {
+#pragma region Player Read
   // Create
-  char playerFifoName[STRING_LARGE];
-  sprintf(playerFifoName, "%s_%d", FIFO_PLAYER, getpid());
-  if (mkfifo(playerFifoName, 0777) == -1) {
+  char fifoName_PlayerRead[STRING_LARGE];
+  sprintf(fifoName_PlayerRead, "%s_%d", FIFO_PLAYER, getpid());
+  if (mkfifo(fifoName_PlayerRead, 0777) == -1) {
     // Only returns error if file does not exist after operation
     if (errno != EEXIST) {
-      printf("\tUnexpected error on mkfifo()! Program will exit...\n");
-      printf("\t\tError: %d\n", errno);
+      printf("[ERROR] Unexpected error on mkfifo()! Error: %d\n", errno);
+      return false;
+    }
+  }
+#pragma endregion
+
+#pragma region Player Write
+  // Create
+  char fifoName_PlayerWrite[STRING_LARGE];
+  sprintf(fifoName_PlayerWrite, "%s_%d", FIFO_PLAYER_TO_REFEREE, getpid());
+  if (mkfifo(fifoName_PlayerWrite, 0777) == -1) {
+    // Only returns error if file does not exist after operation
+    if (errno != EEXIST) {
+      printf("[ERROR] Unexpected error on mkfifo()! Error: %d\n", errno);
       return false;
     }
   }
 
-  app->namedPipeHandles.fdComm_Read = open(playerFifoName, O_RDWR);
-  if (app->namedPipeHandles.fdComm_Read == -1) {
-    printf("\tUnexpected error on open()!\n");
-    printf("\t\tError: %d\n", errno);
-    return false;
-  }
+  printf("[DEBUG] - Created a named pipe named %s\n", fifoName_PlayerWrite);
+#pragma endregion
 
+#pragma region Player Login Write
   app->namedPipeHandles.fdQnARequest_Write = open(FIFO_REFEREE, O_WRONLY);
   if (app->namedPipeHandles.fdQnARequest_Write == -1) {
     printf("Unexpected error on open()! Program will exit...\n");
     printf("\tError: %d\n", errno);
     return false;
   }
+#pragma endregion
 
   return true;
 }
@@ -92,6 +103,22 @@ bool Service_Login(Application *app, char *username) {
   };
 
   return true;
+}
+
+void Service_OpenPrivateWrite(Application *app) {
+  char fifoName_PlayerWrite[STRING_LARGE];
+  sprintf(fifoName_PlayerWrite, "%s_%d", FIFO_PLAYER_TO_REFEREE, getpid());
+
+  app->namedPipeHandles.fdComm_Write = open(fifoName_PlayerWrite, O_WRONLY);
+  if (app->namedPipeHandles.fdComm_Write == -1) {
+    printf("[ERROR] - Unexpected error on open()! Error: %d\n", errno);
+    return;
+  }
+
+  printf("[DEBUG] - I have opened my named pipe %s for writting!\n",
+         fifoName_PlayerWrite);
+
+  return;
 }
 
 bool Service_Input(Application *app, char *command) {

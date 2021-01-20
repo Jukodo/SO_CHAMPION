@@ -278,6 +278,21 @@ PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
     pthread_mutex_unlock(&app->mutStartChampionship);
   }
 
+  // Create player specific thread to know when player leaves (when comm is
+  // broken)
+  TParam_ReadFromGame *param = malloc(sizeof(TParam_ReadFromGame));
+  if (param == NULL) {
+    return PLR_INVALID_UNDEFINED;
+  }
+  param->app = app;
+  param->myPlayerIndex = emptyIndex;
+  if (pthread_create(&app->playerList[emptyIndex].hAwake, NULL,
+                     &Thread_AwakePlayer, (void *)param) != 0) {
+    printf("[ERROR] - Could not create thread\n");
+    free(param);
+    return PLR_INVALID_UNDEFINED;
+  };
+
   return PLR_SUCCESS;
 }
 

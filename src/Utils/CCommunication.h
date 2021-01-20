@@ -3,6 +3,7 @@
 
 #define FIFO_REFEREE "../tmp/fifo_qna_referee"
 #define FIFO_PLAYER "../tmp/fifo_toss_player"
+#define FIFO_PLAYER_TO_REFEREE "../tmp/fifo_p2r"
 
 #pragma region NamedPipe - Structs / Enums Prototypes
 // QnARequest Requests Variants

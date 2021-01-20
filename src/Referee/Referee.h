@@ -65,7 +65,9 @@ struct Player {
 
   GameProc gameProc;
   int fdComm_Write;
+  int fdAwake;
   sem_t semNamedPipe;
+  pthread_t hAwake;
 };
 
 struct Referee {
