@@ -137,10 +137,9 @@ void* Thread_ChampionshipFlow(void* _param) {
       param->app->referee.isChampionshipClosed = false;
       printf("[INFO] - Championship is ready to start!\n");
       // Only unlocked when at least 2 players have joined
-      sem_wait(&param->app->semStartChampionship);
+      pthread_mutex_lock(&param->app->mutStartChampionship);
 
       // Start a timer to wait for more players
-
       if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
         printf("[ERROR] - Clock getTime failed! Error: %d\n", perror);
         return (void*)EXIT_FAILURE;
@@ -149,7 +148,7 @@ void* Thread_ChampionshipFlow(void* _param) {
 
       printf("[INFO] - Waiting for players for %d seconds\n",
              param->app->referee.waitingDuration);
-      sem_timedwait(&param->app->semCountdown, &ts);
+      pthread_mutex_timedlock(&param->app->mutCountdown, &ts);
       param->app->referee.isChampionshipClosed = true;
       printf("[INFO] - Lobby has closed! Currently active players: %d\n",
              getQuantityPlayers(param->app));
@@ -171,7 +170,7 @@ void* Thread_ChampionshipFlow(void* _param) {
 
     printf("[INFO] - Championship has started! Ending in %d seconds...\n",
            param->app->referee.championshipDuration);
-    sem_timedwait(&param->app->semCountdown, &ts);
+    pthread_mutex_timedlock(&param->app->mutCountdown, &ts);
     printf("[INFO] - Championship ended!\n");
   }
 

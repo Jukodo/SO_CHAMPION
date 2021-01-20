@@ -14,12 +14,15 @@ bool Setup_Application(Application *app, int argc, char **argv) {
   memset(app->referee.gameDir, '\0', STRING_MEDIUM);
   app->referee.maxPlayers = 0;
 
-  if (sem_init(&app->semCountdown, PTHREAD_PROCESS_PRIVATE, 0) == -1) {
+  if (pthread_mutex_init(&app->mutCountdown, NULL) == -1) {
     printf("[ERROR] - Timer init failed! Error: %d", errno);
   }
-  if (sem_init(&app->semStartChampionship, PTHREAD_PROCESS_PRIVATE, 0) == -1) {
+  pthread_mutex_lock(&app->mutCountdown);
+
+  if (pthread_mutex_init(&app->mutStartChampionship, NULL) == -1) {
     printf("[ERROR] - Championship flag init failed! Error: %d", errno);
   }
+  pthread_mutex_lock(&app->mutStartChampionship);
 
   if (!Setup_Variables(app, argc, argv)) {
     return false;
@@ -272,7 +275,7 @@ PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
   printf("\t\tProcId: %d\n\n", procId);
 
   if (getQuantityPlayers(app) >= DEFAULT_MINPLAYERS_START) {
-    sem_post(&app->semStartChampionship);
+    pthread_mutex_unlock(&app->mutStartChampionship);
   }
 
   return PLR_SUCCESS;
@@ -357,11 +360,11 @@ void Service_HandleSelfCommand(Application *app, char *command) {
       Service_OpenGame(app, app->playerList[0].procId);
     }
   } else if (strcmp(commandName, "t_unlockcsf") == 0) {
-    sem_post(&app->semStartChampionship);
+    pthread_mutex_unlock(&app->mutStartChampionship);
   } else if (strcmp(commandName, "t_unlocklb") == 0) {
-    sem_post(&app->semCountdown);
+    pthread_mutex_unlock(&app->mutCountdown);
   } else if (strcmp(commandName, "t_unlockcs") == 0) {
-    sem_post(&app->semCountdown);
+    pthread_mutex_unlock(&app->mutCountdown);
   }
 }
 

@@ -94,6 +94,6 @@ struct Application {
   Player* playerList;
 
   ThreadHandles threadHandles;
-  sem_t semCountdown;
-  sem_t semStartChampionship;
+  pthread_mutex_t mutCountdown;
+  pthread_mutex_t mutStartChampionship;
 };
