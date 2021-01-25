@@ -3,16 +3,47 @@
 #include "PService.h"
 #include "Player.h"
 
-void* Thread_SendQnARequests(void* _param) {
-  TParam_SendQnARequest* param = (TParam_SendQnARequest*)_param;
+/**This thread will be instanced and destroyed as soon as the request has been
+ * sent.
+ * This is a thread to send information without blocking other tasks.
+ */
+void* Thread_SendEntryRequest(void* _param) {
+  TParam_SendEntryRequest* param = (TParam_SendEntryRequest*)_param;
 
-  // Send Question
-  if (write(param->app->namedPipeHandles.fdQnARequest_Write,  // File Descriptor
-            &param->request,                                  // Value
-            sizeof(QnARequest)  // Size of written value
+  // Send entry request
+  if (write(param->app->namedPipeHandles.fdComm_Entry,  // File Descriptor
+            &param->entryRequest,                       // Value
+            sizeof(EntryRequest)                        // Size of written value
             ) == -1) {
-    printf("\tCould not communicate with Referee's named pipe!\n");
-    printf("\tError: %d\n", errno);
+    printf(
+        "[ERROR] - Could not communicate with Referee's entry named pipe! "
+        "Error: "
+        "%d\n",
+        errno);
+    return (void*)EXIT_FAILURE;
+  }
+
+  close(param->app->namedPipeHandles.fdComm_Entry);
+  free(param);
+  return (void*)EXIT_SUCCESS;
+}
+
+/**This thread will be instanced and destroyed as soon as the comm has been
+ * sent.
+ * This is a thread to send information without blocking other tasks.
+ */
+void* Thread_WriteToReferee(void* _param) {
+  TParam_WriteToReferee* param = (TParam_WriteToReferee*)_param;
+
+  // Send entry request
+  if (write(param->app->namedPipeHandles.fdComm_Write,  // File Descriptor
+            &param->tossComm,                           // Value
+            sizeof(TossComm)                            // Size of written value
+            ) == -1) {
+    printf(
+        "[ERROR] - Could not write to Referee's named pipe! Error: "
+        "%d\n",
+        errno);
     return (void*)EXIT_FAILURE;
   }
 
@@ -20,11 +51,11 @@ void* Thread_SendQnARequests(void* _param) {
   return (void*)EXIT_SUCCESS;
 }
 
-void* Thread_ReceiveComms(void* _param) {
-  TParam_ReceiveComms* param = (TParam_ReceiveComms*)_param;
+void* Thread_ReadFromReferee(void* _param) {
+  TParam_ReadFromReferee* param = (TParam_ReadFromReferee*)_param;
 
   char fifoName_PlayerRead[STRING_LARGE];
-  sprintf(fifoName_PlayerRead, "%s_%d", FIFO_PLAYER, getpid());
+  sprintf(fifoName_PlayerRead, "%s_%d", FIFO_REFEREE_TO_PLAYER, getpid());
   param->app->namedPipeHandles.fdComm_Read =
       open(fifoName_PlayerRead, O_RDONLY);
   if (param->app->namedPipeHandles.fdComm_Read == -1) {

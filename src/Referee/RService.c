@@ -186,7 +186,7 @@ bool Setup_AvailableGames(Application *app) {
 }
 
 bool Setup_NamedPipes(Application *app) {
-  if (mkfifo(FIFO_REFEREE, 0777) == -1) {
+  if (mkfifo(FIFO_REFEREE_ENTRY, 0777) == -1) {
     // Only returns error if file does not exist after operation
     if (errno != EEXIST) {
       printf("\n\tUnexpected error on mkfifo()! Program will exit...");
@@ -199,18 +199,19 @@ bool Setup_NamedPipes(Application *app) {
 }
 
 bool Setup_Threads(Application *app) {
-#pragma region Receive QnA Request
-  TParam_ReceiveQnARequest *param_qna =
-      malloc(sizeof(TParam_ReceiveQnARequest));
-  if (param_qna == NULL) {
+#pragma region Read Entry Requests
+  TParam_ReceiveEntryRequest *param_entryReq =
+      malloc(sizeof(TParam_ReceiveEntryRequest));
+  if (param_entryReq == NULL) {
     return false;
   }
 
-  param_qna->app = app;
+  param_entryReq->app = app;
 
-  if (pthread_create(&app->threadHandles.hQnARequests, NULL,
-                     &Thread_ReceiveQnARequests, (void *)param_qna) != 0) {
-    free(param_qna);
+  if (pthread_create(&app->threadHandles.hEntryRequests, NULL,
+                     &Thread_ReceiveEntryRequests,
+                     (void *)param_entryReq) != 0) {
+    free(param_entryReq);
     return false;
   };
 #pragma endregion
@@ -252,23 +253,39 @@ PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
     return PLR_INVALID_FULL;
   }
 
-  char playerFifoName[STRING_LARGE];
-  sprintf(playerFifoName, "%s_%d", FIFO_PLAYER, procId);
-  app->playerList[emptyIndex].fdComm_Write = open(playerFifoName, O_RDWR);
-  if (app->playerList[emptyIndex].fdComm_Write == -1) {
-    printf("\t[ERROR] Unexpected error on open()!\n\t\tError: %d\n", errno);
+  Player *newPlayer = &app->playerList[emptyIndex];
+
+  char fifoName_WriteToPlayer[STRING_LARGE];
+  sprintf(fifoName_WriteToPlayer, "%s_%d", FIFO_REFEREE_TO_PLAYER, procId);
+
+  newPlayer->fdComm_Write = open(fifoName_WriteToPlayer, O_RDWR);
+  if (newPlayer->fdComm_Write == -1) {
+    printf("[ERROR] - Unexpected error on open()! Error: %d\n", errno);
     return PLR_INVALID_UNDEFINED;
   }
-  if (sem_init(&app->playerList[emptyIndex].semNamedPipe,
-               PTHREAD_PROCESS_PRIVATE, 1) == -1) {
-    printf("[ERROR] - Could not init semaphore! Error: %d", errno);
-    close(app->playerList[emptyIndex].fdComm_Write);
+
+  printf(
+      "[DEBUG] - Openned a named pipe belonging to %s named as %s... I can now "
+      "write!\n",
+      username, fifoName_WriteToPlayer);
+
+  newPlayer->active = true;
+  newPlayer->procId = procId;
+  strcpy(newPlayer->username, username);
+
+  TParam_ReadFromSpecificPlayer *param =
+      malloc(sizeof(TParam_ReadFromSpecificPlayer));
+  if (param == NULL) {
+    return PLR_INVALID_UNDEFINED;
+  }
+  param->app = app;
+  param->myPlayerIndex = emptyIndex;
+  if (pthread_create(&newPlayer->hComm_Read, NULL,
+                     &Thread_ReadFromSpecificPlayer, (void *)param) != 0) {
+    printf("[ERROR] - Could not create thread\n");
+    free(param);
     return PLR_INVALID_UNDEFINED;
   };
-
-  app->playerList[emptyIndex].active = true;
-  app->playerList[emptyIndex].procId = procId;
-  strcpy(app->playerList[emptyIndex].username, username);
 
   printf("\n\t[INFO] New player has logged in!\n");
   printf("\t\tUsername: %s\n", username);
@@ -278,37 +295,38 @@ PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
     pthread_mutex_unlock(&app->mutStartChampionship);
   }
 
-  // Create player specific thread to know when player leaves (when comm is
-  // broken)
-  TParam_ReadFromGame *param = malloc(sizeof(TParam_ReadFromGame));
-  if (param == NULL) {
-    return PLR_INVALID_UNDEFINED;
-  }
-  param->app = app;
-  param->myPlayerIndex = emptyIndex;
-  if (pthread_create(&app->playerList[emptyIndex].hAwake, NULL,
-                     &Thread_AwakePlayer, (void *)param) != 0) {
-    printf("[ERROR] - Could not create thread\n");
-    free(param);
-    return PLR_INVALID_UNDEFINED;
-  };
-
   return PLR_SUCCESS;
 }
 
-PlayerInputResponse Service_PlayerInput(Application *app, int procId,
-                                        char *command) {
-  PlayerInputResponse resp;
-  resp.playerInputResponseType = PIR_INVALID;
+void Service_PlayerLogout(Application *app, int procId) {
+  int foundPlayerIndex = getPlayerIndexByProcId(app, procId);
+  if (foundPlayerIndex == -1) {
+    return;
+  }
 
+  Player *foundPlayer = &app->playerList[foundPlayerIndex];
+  foundPlayer->active = false;
+  memset(foundPlayer->username, '\0', STRING_LARGE);
+
+  /**TAG_TODO
+   * Close all handles for player
+   * Named pipes
+   * Threads
+   * Active game
+   * etc...
+   */
+}
+
+void Service_PlayerInput(Application *app, int procId, char *command) {
   int playerIndex = getPlayerIndexByProcId(app, procId);
   if (playerIndex == -1) {
+    // Since it could not find player, it can't communicate back
     printf("[WARNING] - Could not find Player with procId: %d\n", procId);
-    return resp;
+    return;
   }
   if (Utils_StringIsEmpty(command)) {
-    printf("[WARNING] - Received command is empty\n");
-    return resp;
+    // Since the command is empty, it is unnecessary to communicate back
+    printf("[WARNING] - Received command is empty!\n");
   }
 
   // Check if received input is a command or an input directed to the game
@@ -316,20 +334,32 @@ PlayerInputResponse Service_PlayerInput(Application *app, int procId,
     printf("[INFO] - Received a command: %s from Player with procId: %d\n",
            command, procId);
 
-    resp = Service_HandlePlayerCommand(app, procId, command);
-    return resp;
+    // Create a response comm
+    TossComm *tossComm = malloc(sizeof(TossComm));
+    if (tossComm == NULL) {
+      return;
+    }
+
+    tossComm->tossType = TCRT_INPUT_RESP;
+    tossComm->playerInputResponse =
+        Service_HandlePlayerCommand(app, procId, command);
+
+    Service_SendTossComm(app, procId, tossComm);
+    return;
   } else {
+    // An input directed to the game does not need an answer
     printf("[INFO] - Received a game input: %s from Player with procId: %d\n",
            command, procId);
 
-    Player player = app->playerList[getPlayerIndexByProcId(app, procId)];
-    printf("[INFO] - Trying to write %s to game of player [%s]\n", command,
-           player.username);
-    if (write(player.gameProc.fdWriteToGame, command, STRING_LARGE) == -1) {
-      printf("[ERROR] - Could not write to game... Error: %d", errno);
+    Player player = app->playerList[playerIndex];
+    if (player.gameProc.active) {
+      printf("[INFO] - Trying to write %s to game of player [%s]\n", command,
+             player.username);
+      if (write(player.gameProc.fdWriteToGame, command, STRING_LARGE) == -1) {
+        printf("[ERROR] - Could not write to game... Error: %d", errno);
+      }
     }
-    resp.playerInputResponseType = PIR_INPUT;
-    return resp;
+    return;
   }
 }
 
@@ -533,6 +563,38 @@ void Service_BroadcastChampionshipState(Application *app, int state) {
       }
     }
   }
+}
+
+/**Create a TossComm allocated in memory (malloc)
+ * Fill up the toss comm and inform which procId should it send to
+ */
+void Service_SendTossComm(Application *app, int procId, TossComm *tossComm) {
+  int sendToIndex = getPlayerIndexByProcId(app, procId);
+  if (sendToIndex == -1) {
+    printf("[WARNING] - Could not find Player with procId: %d\n", procId);
+    return;
+  }
+
+  // Create a thread param for said thread
+  TParam_WriteToSpecificPlayer *param =
+      malloc(sizeof(TParam_WriteToSpecificPlayer));
+  if (param == NULL) {
+    free(tossComm);
+    return;
+  }
+
+  param->app = app;
+  param->myPlayerIndex = sendToIndex;
+  param->tossComm = tossComm;
+
+  // Create thread so that this operation won't block other operations
+  pthread_t currThread;
+  if (pthread_create(&currThread, NULL, &Thread_WriteToSpecificPlayer,
+                     (void *)param) != 0) {
+    free(tossComm);
+    free(param);
+    return;
+  };
 }
 
 /**

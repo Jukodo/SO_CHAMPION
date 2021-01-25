@@ -13,8 +13,8 @@ bool isValid_WaitingDuration(Application *app, int value);
 
 PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
                                             char *username);
-PlayerInputResponse Service_PlayerInput(Application *app, int procId,
-                                        char *command);
+void Service_PlayerLogout(Application *app, int procId);
+void Service_PlayerInput(Application *app, int procId, char *command);
 PlayerInputResponse Service_HandlePlayerCommand(Application *app, int procId,
                                                 char *command);
 void Service_HandleSelfCommand(Application *app, char *command);
@@ -22,6 +22,7 @@ bool Service_KickPlayer(Application *app, char *username);
 void Service_Exit(Application *app);
 void Service_OpenGame(Application *app, int playerProcId);
 void Service_BroadcastChampionshipState(Application *app, int state);
+void Service_SendTossComm(Application *app, int procId, TossComm *tossComm);
 
 int getRandomGameIndex(Application *app);
 int getPlayerListEmptyIndex(Application *app);

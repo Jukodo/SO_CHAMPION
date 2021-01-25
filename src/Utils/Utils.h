@@ -10,6 +10,8 @@ typedef int bool;
 #define false 0
 #define null 0
 
+#define DEBUG 1
+
 #define STRING_SMALL 25
 #define STRING_MEDIUM 50
 #define STRING_LARGE 100

@@ -2,17 +2,24 @@
 
 #include "Player.h"
 
-typedef struct TParam_SendQnARequest TParam_SendQnARequest;
-typedef struct TParam_ReceiveComms TParam_ReceiveComms;
+typedef struct TParam_SendEntryRequest TParam_SendEntryRequest;
+typedef struct TParam_WriteToReferee TParam_WriteToReferee;
+typedef struct TParam_ReadFromReferee TParam_ReadFromReferee;
 
-struct TParam_SendQnARequest {
+struct TParam_SendEntryRequest {
   Application* app;
-  QnARequest request;
+  EntryRequest entryRequest;
 };
 
-struct TParam_ReceiveComms {
+struct TParam_WriteToReferee {
+  Application* app;
+  TossComm tossComm;
+};
+
+struct TParam_ReadFromReferee {
   Application* app;
 };
 
-void* Thread_SendQnARequests(void* _param);
-void* Thread_ReceiveComms(void* _param);
+void* Thread_SendEntryRequest(void* _param);
+void* Thread_WriteToReferee(void* _param);
+void* Thread_ReadFromReferee(void* _param);

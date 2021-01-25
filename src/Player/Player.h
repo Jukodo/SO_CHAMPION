@@ -32,14 +32,16 @@ struct Player {
 };
 
 struct NamedPipeHandles {
-  int fdQnARequest_Write;  // Writes QnA Requests to Referee
-  int fdComm_Read;   // Reads Communication Messages from Referee directed to
+  int fdComm_Entry;  // Writes entry request to Referee
+
+  int fdComm_Read;   // Reads communication messages from referee directed to
                      // self
-  int fdComm_Write;  // His own private named pipe to server
+  int fdComm_Write;  // Writes communication messages to referee from private
+                     // named pipe channel
 };
 
 struct ThreadHandles {
-  pthread_t hReceiveComms;
+  pthread_t hReadFromReferee;
 };
 
 struct MutexHandles {

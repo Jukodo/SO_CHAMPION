@@ -5,7 +5,7 @@
 void handle_sigusr1(int sig) {
   printf("\n\tReceived signal: %d...\n", sig);
   printf("\tClosing App and deleting FIFOs!\n");
-  unlink(FIFO_REFEREE);
+  unlink(FIFO_REFEREE_ENTRY);
   exit(EXIT_SUCCESS);
 }
 
@@ -40,7 +40,6 @@ int main(int argc, char **argv) {
   } while (flagContinue);
 #pragma endregion
 
-  unlink(FIFO_PLAYER);
   free(app);
   return 0;
 }

@@ -5,9 +5,12 @@
 void handle_sigusr1(int sig) {
   printf("\n\tReceived signal: %d...\n", sig);
   printf("\tClosing App and deleting FIFOs!\n");
-  char fifoname[STRING_LARGE];
-  sprintf(fifoname, "%s_%d", FIFO_PLAYER, getpid());
-  unlink(fifoname);
+  char fifoname_Read[STRING_LARGE];
+  sprintf(fifoname_Read, "%s_%d", FIFO_PLAYER_TO_REFEREE, getpid());
+  unlink(fifoname_Read);
+  char fifoname_Write[STRING_LARGE];
+  sprintf(fifoname_Write, "%s_%d", FIFO_REFEREE_TO_PLAYER, getpid());
+  unlink(fifoname_Write);
   exit(EXIT_SUCCESS);
 }
 

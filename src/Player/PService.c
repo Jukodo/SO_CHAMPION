@@ -25,10 +25,10 @@ bool Setup_Application(Application *app) {
 }
 
 bool Setup_NamedPipes(Application *app) {
-#pragma region Player Read
+#pragma region Create - Player read from Referee
   // Create
   char fifoName_PlayerRead[STRING_LARGE];
-  sprintf(fifoName_PlayerRead, "%s_%d", FIFO_PLAYER, getpid());
+  sprintf(fifoName_PlayerRead, "%s_%d", FIFO_REFEREE_TO_PLAYER, getpid());
   if (mkfifo(fifoName_PlayerRead, 0777) == -1) {
     // Only returns error if file does not exist after operation
     if (errno != EEXIST) {
@@ -36,9 +36,14 @@ bool Setup_NamedPipes(Application *app) {
       return false;
     }
   }
+
+  printf(
+      "[DEBUG] - Created a named pipe named %s... Objetive: Read from "
+      "Referee\n",
+      fifoName_PlayerRead);
 #pragma endregion
 
-#pragma region Player Write
+#pragma region Create - Player write to Referee
   // Create
   char fifoName_PlayerWrite[STRING_LARGE];
   sprintf(fifoName_PlayerWrite, "%s_%d", FIFO_PLAYER_TO_REFEREE, getpid());
@@ -50,12 +55,15 @@ bool Setup_NamedPipes(Application *app) {
     }
   }
 
-  printf("[DEBUG] - Created a named pipe named %s\n", fifoName_PlayerWrite);
+  printf(
+      "[DEBUG] - Created a named pipe named %s... Objetive: Write to "
+      "Referee\n",
+      fifoName_PlayerWrite);
 #pragma endregion
 
-#pragma region Player Login Write
-  app->namedPipeHandles.fdQnARequest_Write = open(FIFO_REFEREE, O_WRONLY);
-  if (app->namedPipeHandles.fdQnARequest_Write == -1) {
+#pragma region Open - Player Login Write
+  app->namedPipeHandles.fdComm_Entry = open(FIFO_REFEREE_ENTRY, O_WRONLY);
+  if (app->namedPipeHandles.fdComm_Entry == -1) {
     printf("Unexpected error on open()! Program will exit...\n");
     printf("\tError: %d\n", errno);
     return false;
@@ -66,15 +74,15 @@ bool Setup_NamedPipes(Application *app) {
 }
 
 bool Setup_Threads(Application *app) {
-  TParam_ReceiveComms *param = malloc(sizeof(TParam_ReceiveComms));
+  TParam_ReadFromReferee *param = malloc(sizeof(TParam_ReadFromReferee));
   if (param == NULL) {
     return false;
   }
 
   param->app = app;
 
-  if (pthread_create(&app->threadHandles.hReceiveComms, NULL,
-                     &Thread_ReceiveComms, (void *)param) != 0) {
+  if (pthread_create(&app->threadHandles.hReadFromReferee, NULL,
+                     &Thread_ReadFromReferee, (void *)param) != 0) {
     free(param);
     return false;
   };
@@ -83,20 +91,18 @@ bool Setup_Threads(Application *app) {
 }
 
 bool Service_Login(Application *app, char *username) {
-  TParam_SendQnARequest *param =
-      (TParam_SendQnARequest *)malloc(sizeof(TParam_SendQnARequest));
+  TParam_SendEntryRequest *param =
+      (TParam_SendEntryRequest *)malloc(sizeof(TParam_SendEntryRequest));
   if (param == NULL) {
     return false;
   }
 
   param->app = app;
-  param->request.requestType = QnART_LOGIN;
-  strcpy(param->request.playerLoginRequest.username, username);
-  param->request.playerLoginRequest.procId = getpid();
+  strcpy(param->entryRequest.username, username);
+  param->entryRequest.procId = getpid();
 
   pthread_t currThread;
-
-  if (pthread_create(&currThread, NULL, &Thread_SendQnARequests,
+  if (pthread_create(&currThread, NULL, &Thread_SendEntryRequest,
                      (void *)param) != 0) {
     free(param);
     return false;
@@ -122,19 +128,18 @@ void Service_OpenPrivateWrite(Application *app) {
 }
 
 bool Service_Input(Application *app, char *command) {
-  TParam_SendQnARequest *param =
-      (TParam_SendQnARequest *)malloc(sizeof(TParam_SendQnARequest));
+  TParam_WriteToReferee *param = malloc(sizeof(TParam_WriteToReferee));
   if (param == NULL) {
     return false;
   }
 
   param->app = app;
-  param->request.requestType = QnART_INPUT;
-  strcpy(param->request.playerInputRequest.command, command);
-  param->request.playerInputRequest.procId = getpid();
+  param->tossComm.tossType = TCRT_PLAYER_INPUT;
+  strcpy(param->tossComm.playerInput.command, command);
+  param->tossComm.playerInput.procId = getpid();
 
   pthread_t currThread;
-  if (pthread_create(&currThread, NULL, &Thread_SendQnARequests,
+  if (pthread_create(&currThread, NULL, &Thread_WriteToReferee,
                      (void *)param) != 0) {
     free(param);
     return false;
@@ -146,6 +151,5 @@ bool Service_Input(Application *app, char *command) {
 void Print_Application(Application *app) {
   printf("\nMyApplication\n");
   printf("\tUsername: %s\n", app->player.username);
-  printf("\tQnARequest_Read FD: %d\n",
-         app->namedPipeHandles.fdQnARequest_Write);
+  printf("\tQnARequest_Read FD: %d\n", app->namedPipeHandles.fdComm_Entry);
 }

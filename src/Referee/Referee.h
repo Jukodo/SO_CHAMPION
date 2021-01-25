@@ -64,10 +64,11 @@ struct Player {
   int procId;
 
   GameProc gameProc;
+
   int fdComm_Write;
-  int fdAwake;
-  sem_t semNamedPipe;
-  pthread_t hAwake;
+  int fdComm_Read;
+
+  pthread_t hComm_Read;
 };
 
 struct Referee {
@@ -86,7 +87,7 @@ struct AvailableGames {
 };
 
 struct ThreadHandles {
-  pthread_t hQnARequests;
+  pthread_t hEntryRequests;
   pthread_t hChampionshipFlow;
 };
 
