@@ -16,6 +16,8 @@
 #include "../Utils/CCommunication.h"
 #include "../Utils/Utils.h"
 
+#define DEBUG 0
+
 typedef struct Player Player;
 
 typedef struct NamedPipeHandles NamedPipeHandles;

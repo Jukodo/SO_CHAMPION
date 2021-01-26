@@ -17,6 +17,8 @@
 #include "../Utils/CCommunication.h"
 #include "../Utils/Utils.h"
 
+#define DEBUG 0
+
 #define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Execs/Games/"
 #define DEFAULT_MAXPLAYER 10
 #define DEFAULT_MINPLAYERS_START 5

@@ -26,9 +26,11 @@ void* Thread_ReceiveEntryRequests(void* _param) {
     int readBytes =
         read(fdQnARequest_Read, &entryRequest, sizeof(EntryRequest));
     if (readBytes != sizeof(EntryRequest)) {
-      printf(
-          "[DEBUG] - A player disconnected from entry channel! Getting ready "
-          "for next...\n");
+      if (DEBUG) {
+        printf(
+            "[DEBUG] - A player disconnected from entry channel! Getting ready "
+            "for next...\n");
+      }
 
       close(fdQnARequest_Read);
       closed = true;
@@ -61,8 +63,8 @@ void* Thread_ReceiveEntryRequests(void* _param) {
        * operations are atomic (One operation at a time)
        *
        * Only situation a block would be needed is when the writtings would
-       * exceed the buffer size, which the minimum is 512 bytes and default "On
-       * Linux, it's 4096 bytes"
+       * exceed the buffer size, which the minimum is 512 bytes and default
+       * "On Linux, it's 4096 bytes"
        *
        * Sources:
        * https://unix.stackexchange.com/questions/68146/what-are-guarantees-for-concurrent-writes-into-a-named-pipe
@@ -75,8 +77,9 @@ void* Thread_ReceiveEntryRequests(void* _param) {
         printf("TossComm failed\n");
       }
     } else {
-      // If request fails, create a temporary connection to named pipe named by
-      // received process id and inform player that the login could not be done
+      // If request fails, create a temporary connection to named pipe named
+      // by received process id and inform player that the login could not be
+      // done
 
       // Concat fifo name to received process id
       char fifoName_WriteToPlayer[STRING_LARGE];
@@ -132,18 +135,23 @@ void* Thread_ReadFromSpecificPlayer(void* _param) {
   sprintf(fifoName_PlayerRead, "%s_%d", FIFO_PLAYER_TO_REFEREE,
           myPlayer.procId);
 
-  printf("[DEBUG] - Trying to open a named pipe named %s\n",
-         fifoName_PlayerRead);
+  if (DEBUG) {
+    printf("[DEBUG] - Trying to open a named pipe named %s\n",
+           fifoName_PlayerRead);
+  }
 
   myPlayer.fdComm_Read = open(fifoName_PlayerRead, O_RDONLY);
   if (myPlayer.fdComm_Read == -1) {
     printf("[ERROR] Unexpected error on open()! Error: %d\n", errno);
     return (void*)EXIT_FAILURE;
   }
-  printf(
-      "[DEBUG] - Named pipe belonging to %s has his write side open now... I "
-      "can now read!\n",
-      myPlayer.username);
+  if (DEBUG) {
+    printf(
+        "[DEBUG] - Named pipe belonging to %s has his write side open now... "
+        "I "
+        "can now read!\n",
+        myPlayer.username);
+  }
 
   // Start cycle and only stops when broken
   TossComm receivedComm;
@@ -161,16 +169,21 @@ void* Thread_ReadFromSpecificPlayer(void* _param) {
         break;
       default:
         printf(
-            "[ERROR] - Tried to handle an non set toss comm, marked as %d!\n",
+            "[ERROR] - Tried to handle an non set toss comm, marked as "
+            "%d!\n",
             receivedComm.tossType);
         break;
     }
 
-    printf("[DEBUG] - Read %d bytes!\n", readBytes);
+    if (DEBUG) {
+      printf("[DEBUG] - Read %d bytes!\n", readBytes);
+    }
   };
 
-  printf("[DEBUG] - Lost connection to player %s! Logging him out...\n",
-         myPlayer.username);
+  if (DEBUG) {
+    printf("[DEBUG] - Lost connection to player %s! Logging him out...\n",
+           myPlayer.username);
+  }
 
   Service_PlayerLogout(param->app, myPlayer.procId);
 
@@ -183,7 +196,9 @@ void* Thread_ReadFromSpecificPlayer(void* _param) {
  * This is a thread to send information without blocking other tasks.
  */
 void* Thread_WriteToSpecificPlayer(void* _param) {
-  printf("[DEBUG] - Started a thread to send a comm response\n");
+  if (DEBUG) {
+    printf("[DEBUG] - Started a thread to send a comm response\n");
+  }
 
   TParam_WriteToSpecificPlayer* param = (TParam_WriteToSpecificPlayer*)_param;
   Player* myPlayer = &param->app->playerList[param->myPlayerIndex];
@@ -241,7 +256,9 @@ void* Thread_ChampionshipFlow(void* _param) {
     canStart = false;
     do {
       param->app->referee.isChampionshipClosed = false;
-      printf("[DEBUG] - Championship is ready to start!\n");
+      if (DEBUG) {
+        printf("[DEBUG] - Championship is ready to start!\n");
+      }
       // Only unlocked when at least 2 players have joined
       pthread_mutex_lock(&param->app->mutStartChampionship);
 

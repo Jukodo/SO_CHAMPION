@@ -34,10 +34,11 @@ void* Thread_SendEntryRequest(void* _param) {
  */
 void* Thread_WriteToReferee(void* _param) {
   TParam_WriteToReferee* param = (TParam_WriteToReferee*)_param;
+  TossComm* tossComm = param->tossComm;
 
   // Send entry request
   if (write(param->app->namedPipeHandles.fdComm_Write,  // File Descriptor
-            &param->tossComm,                           // Value
+            tossComm,                                   // Value
             sizeof(TossComm)                            // Size of written value
             ) == -1) {
     printf(
@@ -47,6 +48,7 @@ void* Thread_WriteToReferee(void* _param) {
     return (void*)EXIT_FAILURE;
   }
 
+  free(tossComm);
   free(param);
   return (void*)EXIT_SUCCESS;
 }
@@ -66,10 +68,15 @@ void* Thread_ReadFromReferee(void* _param) {
   int readBytes;
   TossComm receivedTossComm;
 
-  do {
+  while (1) {
     readBytes = read(param->app->namedPipeHandles.fdComm_Read,
                      &receivedTossComm, sizeof(TossComm));
-    printf("[DEBUG] - I've read %d bytes!\n", readBytes);
+    if (readBytes == 0) {
+      break;
+    }
+    if (DEBUG) {
+      printf("[DEBUG] - I've read %d bytes!\n", readBytes);
+    }
 
     if (readBytes == sizeof(TossComm)) {
       switch (receivedTossComm.tossType) {
@@ -92,7 +99,8 @@ void* Thread_ReadFromReferee(void* _param) {
             case PLR_INVALID_CLOSED:
               param->app->player.loggedIn = false;
               printf(
-                  "[WARNING] - A championship is running at the moment or not "
+                  "[WARNING] - A championship is running at the moment or "
+                  "not "
                   "accepting players by choice! Try again later...\n");
               break;
             default:
@@ -115,7 +123,8 @@ void* Thread_ReadFromReferee(void* _param) {
               break;
             default:
               printf(
-                  "[WARNING] - I received something from TCRT_INPUT_RESP that "
+                  "[WARNING] - I received something from TCRT_INPUT_RESP "
+                  "that "
                   "I "
                   "can't handle\n");
               break;
@@ -132,9 +141,9 @@ void* Thread_ReadFromReferee(void* _param) {
           break;
       }
     }
-  } while (readBytes > 0);
+  }
 
-  printf("[DEBUG] - Lost connection to server!\n");
+  printf("[INFO] - Lost connection to server!\n");
 
   free(param);
   return (void*)EXIT_SUCCESS;

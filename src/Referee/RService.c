@@ -264,10 +264,13 @@ PlayerLoginResponseType Service_PlayerLogin(Application *app, int procId,
     return PLR_INVALID_UNDEFINED;
   }
 
-  printf(
-      "[DEBUG] - Openned a named pipe belonging to %s named as %s... I can now "
-      "write!\n",
-      username, fifoName_WriteToPlayer);
+  if (DEBUG) {
+    printf(
+        "[DEBUG] - Openned a named pipe belonging to %s named as %s... I can "
+        "now "
+        "write!\n",
+        username, fifoName_WriteToPlayer);
+  }
 
   newPlayer->active = true;
   newPlayer->procId = procId;
@@ -331,8 +334,10 @@ void Service_PlayerInput(Application *app, int procId, char *command) {
 
   // Check if received input is a command or an input directed to the game
   if (command[0] == '#') {
-    printf("[INFO] - Received a command: %s from Player with procId: %d\n",
-           command, procId);
+    if (DEBUG) {
+      printf("[DEBUG] - Received a command: %s from Player with procId: %d\n",
+             command, procId);
+    }
 
     // Create a response comm
     TossComm *tossComm = malloc(sizeof(TossComm));
@@ -348,8 +353,11 @@ void Service_PlayerInput(Application *app, int procId, char *command) {
     return;
   } else {
     // An input directed to the game does not need an answer
-    printf("[INFO] - Received a game input: %s from Player with procId: %d\n",
-           command, procId);
+    if (DEBUG) {
+      printf(
+          "[DEBUG] - Received a game input: %s from Player with procId: %d\n",
+          command, procId);
+    }
 
     Player player = app->playerList[playerIndex];
     if (player.gameProc.active) {
@@ -565,7 +573,8 @@ void Service_BroadcastChampionshipState(Application *app, int state) {
   }
 }
 
-/**Create a TossComm allocated in memory (malloc)
+/**Send a TossComm to player with specific process id
+ * Create a TossComm allocated in memory (malloc)
  * Fill up the toss comm and inform which procId should it send to
  */
 void Service_SendTossComm(Application *app, int procId, TossComm *tossComm) {

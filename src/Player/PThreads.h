@@ -13,7 +13,7 @@ struct TParam_SendEntryRequest {
 
 struct TParam_WriteToReferee {
   Application* app;
-  TossComm tossComm;
+  TossComm* tossComm;
 };
 
 struct TParam_ReadFromReferee {

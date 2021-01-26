@@ -37,10 +37,12 @@ bool Setup_NamedPipes(Application *app) {
     }
   }
 
-  printf(
-      "[DEBUG] - Created a named pipe named %s... Objetive: Read from "
-      "Referee\n",
-      fifoName_PlayerRead);
+  if (DEBUG) {
+    printf(
+        "[DEBUG] - Created a named pipe named %s... Objetive: Read from "
+        "Referee\n",
+        fifoName_PlayerRead);
+  }
 #pragma endregion
 
 #pragma region Create - Player write to Referee
@@ -55,10 +57,12 @@ bool Setup_NamedPipes(Application *app) {
     }
   }
 
-  printf(
-      "[DEBUG] - Created a named pipe named %s... Objetive: Write to "
-      "Referee\n",
-      fifoName_PlayerWrite);
+  if (DEBUG) {
+    printf(
+        "[DEBUG] - Created a named pipe named %s... Objetive: Write to "
+        "Referee\n",
+        fifoName_PlayerWrite);
+  }
 #pragma endregion
 
 #pragma region Open - Player Login Write
@@ -121,31 +125,54 @@ void Service_OpenPrivateWrite(Application *app) {
     return;
   }
 
-  printf("[DEBUG] - I have opened my named pipe %s for writting!\n",
-         fifoName_PlayerWrite);
+  if (DEBUG) {
+    printf("[DEBUG] - I have opened my named pipe %s for writting!\n",
+           fifoName_PlayerWrite);
+  }
 
   return;
 }
 
 bool Service_Input(Application *app, char *command) {
-  TParam_WriteToReferee *param = malloc(sizeof(TParam_WriteToReferee));
-  if (param == NULL) {
+  TossComm *tossComm = malloc(sizeof(TossComm));
+  if (tossComm == NULL) {
+    printf("[ERROR] - Malloc failed to allocate for tossComm! Error: %d\n",
+           errno);
     return false;
   }
 
-  param->app = app;
-  param->tossComm.tossType = TCRT_PLAYER_INPUT;
-  strcpy(param->tossComm.playerInput.command, command);
-  param->tossComm.playerInput.procId = getpid();
+  tossComm->tossType = TCRT_PLAYER_INPUT;
+  strcpy(tossComm->playerInput.command, command);
+  tossComm->playerInput.procId = getpid();
 
+  Service_SendTossComm(app, tossComm);
+
+  return true;
+}
+
+/**Send a TossComm to referee from the player privated named pipe
+ * Create a TossComm allocated in memory (malloc)
+ * Fill up the toss comm and inform which procId should it send to
+ */
+void Service_SendTossComm(Application *app, TossComm *tossComm) {
+  // Create a thread param for said thread
+  TParam_WriteToReferee *param = malloc(sizeof(TParam_WriteToReferee));
+  if (param == NULL) {
+    free(tossComm);
+    return;
+  }
+
+  param->app = app;
+  param->tossComm = tossComm;
+
+  // Create thread so that this operation won't block other operations
   pthread_t currThread;
   if (pthread_create(&currThread, NULL, &Thread_WriteToReferee,
                      (void *)param) != 0) {
+    free(tossComm);
     free(param);
-    return false;
+    return;
   };
-
-  return true;
 }
 
 void Print_Application(Application *app) {
