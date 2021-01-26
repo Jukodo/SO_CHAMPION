@@ -575,7 +575,8 @@ void Service_BroadcastChampionshipState(Application *app,
   switch (state) {
     case CS_WAIT_PLAYERS:
       snprintf(message, STRING_LARGE,
-               "[CHAMPIONSHIP] Waiting for more players!\n");
+               "[CHAMPIONSHIP] Waiting for more players for %d seconds!\n",
+               app->referee.waitingDuration);
       break;
     case CS_LACK_PLAYERS:
       snprintf(message, STRING_LARGE,
@@ -584,7 +585,9 @@ void Service_BroadcastChampionshipState(Application *app,
       break;
     case CS_STARTED:
       snprintf(message, STRING_LARGE,
-               "[CHAMPIONSHIP] It started! Good luck!\n");
+               "[CHAMPIONSHIP] It started! Good luck! Championship ends in %d "
+               "seconds!\n",
+               app->referee.championshipDuration);
       break;
     case CS_LACK_PLAYERS_DURING:
       snprintf(message, STRING_LARGE,
