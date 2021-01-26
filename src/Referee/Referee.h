@@ -32,6 +32,8 @@
 
 #define MAX_MAXPLAYER 30
 
+typedef enum ChampionshipState ChampionshipState;
+
 typedef struct GameProc GameProc;
 typedef struct Game Game;
 typedef struct Player Player;
@@ -39,6 +41,15 @@ typedef struct Referee Referee;
 typedef struct AvailableGames AvailableGames;
 
 typedef struct ThreadHandles ThreadHandles;
+
+enum ChampionshipState {
+  CS_WAIT_PLAYERS,
+  CS_LACK_PLAYERS,
+  CS_LACK_PLAYERS_DURING,
+  CS_STARTED,
+  CS_ENDED,
+  CS_WINNER,
+};
 
 typedef struct Application
     Application;  // This struct will keep all information that this application

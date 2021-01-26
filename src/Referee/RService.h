@@ -22,7 +22,8 @@ bool Service_KickPlayer(Application *app, char *username);
 void Service_Exit(Application *app);
 void Service_OpenGame(Application *app, int playerProcId);
 void Service_CloseGame(Application *app, int playerProcId);
-void Service_BroadcastChampionshipState(Application *app, int state);
+void Service_BroadcastChampionshipState(Application *app,
+                                        ChampionshipState state);
 void Service_SendTossComm(Application *app, int procId, TossComm *tossComm);
 
 int getRandomGameIndex(Application *app);

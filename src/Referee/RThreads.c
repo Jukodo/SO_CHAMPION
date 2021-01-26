@@ -253,11 +253,18 @@ void* Thread_ChampionshipFlow(void* _param) {
     do {
 #pragma region Wait until minimum players are logged in
       app->referee.isChampionshipClosed = false;
+
       if (DEBUG) {
         printf("[DEBUG] - Championship is ready to start!\n");
       }
-      // Only unlocked when at least 2 players have joined
-      pthread_mutex_lock(&app->mutStartChampionship);
+
+      if (getQuantityPlayers(app) < DEFAULT_MINPLAYERS_START) {
+        // Only unlocked when at least 2 players have joined
+        pthread_mutex_lock(&app->mutStartChampionship);
+      }
+
+      // Give a small time for the last player to join and connect properly
+      sleep(2);
 #pragma endregion
 
 #pragma region Wait for more players
@@ -268,6 +275,7 @@ void* Thread_ChampionshipFlow(void* _param) {
       }
       ts.tv_sec += app->referee.waitingDuration;
 
+      Service_BroadcastChampionshipState(app, CS_WAIT_PLAYERS);
       printf("[INFO] - Waiting for players for %d seconds\n",
              app->referee.waitingDuration);
       pthread_mutex_timedlock(&app->mutCountdown, &ts);
@@ -282,7 +290,7 @@ void* Thread_ChampionshipFlow(void* _param) {
       canStart = getQuantityPlayers(app) >= DEFAULT_MINPLAYERS_START;
 
       if (!canStart) {
-        Service_BroadcastChampionshipState(app, 3);
+        Service_BroadcastChampionshipState(app, CS_LACK_PLAYERS);
       }
 #pragma endregion
     } while (!canStart);
@@ -302,9 +310,33 @@ void* Thread_ChampionshipFlow(void* _param) {
     }
     ts.tv_sec += app->referee.championshipDuration;
 
+    Service_BroadcastChampionshipState(app, CS_STARTED);
     printf("[INFO] - Championship has started! Ending in %d seconds...\n",
            app->referee.championshipDuration);
+
+    // Make sure the mutex is locked in this point
     pthread_mutex_timedlock(&app->mutCountdown, &ts);
+#pragma endregion
+
+#pragma region Check if finished or canceled by lack of players
+
+    // TRUE: still has minimum players logged in
+    // FALSE: no longer has the minimum logged in
+    if (getQuantityPlayers(app) >= DEFAULT_MINPLAYERS_START) {
+      Service_BroadcastChampionshipState(app, CS_ENDED);
+    } else {
+      for (int i = 0; i < app->referee.maxPlayers; i++) {
+        if (app->playerList[i].active) {
+          Service_CloseGame(app, app->playerList[i].procId);
+        }
+      }
+      Service_BroadcastChampionshipState(app, CS_LACK_PLAYERS_DURING);
+      continue;
+    }
+
+    // Give a bit of pressure while waiting for results
+    sleep(2);
+
     printf("[INFO] - Championship ended!\n");
 #pragma endregion
 
@@ -317,21 +349,7 @@ void* Thread_ChampionshipFlow(void* _param) {
 #pragma endregion
 
 #pragma region Communicate who won
-    Player* winner = null;
-    for (int i = 0; i < app->referee.maxPlayers; i++) {
-      if (app->playerList[i].active) {
-        if (winner == null ||
-            app->playerList[i].lastScore > winner->lastScore) {
-          winner = &app->playerList[i];
-        }
-      }
-    }
-    if (winner == null) {
-      printf("[WARNING] - Could not get any winner! Odd...\n");
-    } else {
-      printf("[INFO] - Winner is %s with %d score!\n", winner->username,
-             winner->lastScore);
-    }
+    Service_BroadcastChampionshipState(app, CS_WINNER);
 #pragma endregion
   }
 

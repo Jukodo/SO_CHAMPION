@@ -311,6 +311,10 @@ void Service_PlayerLogout(Application *app, int procId) {
   foundPlayer->active = false;
   memset(foundPlayer->username, '\0', STRING_LARGE);
 
+  if (getQuantityPlayers(app) < DEFAULT_MINPLAYERS_START) {
+    pthread_mutex_unlock(&app->mutCountdown);
+  }
+
   /**TAG_TODO
    * Close all handles for player
    * Named pipes
@@ -564,45 +568,65 @@ void Service_CloseGame(Application *app, int playerProcId) {
   memset(player->gameProc.gameName, '\0', STRING_MEDIUM);
 }
 
-void Service_BroadcastChampionshipState(Application *app, int state) {
-  TossComm tossComm;
-  tossComm.tossType = TCRT_CHAMPIONSHIP_MSG;
+void Service_BroadcastChampionshipState(Application *app,
+                                        ChampionshipState state) {
+  char message[STRING_LARGE];
 
   switch (state) {
-    case 1:
-      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
-               "THE WINNER IS.........\n");
+    case CS_WAIT_PLAYERS:
+      snprintf(message, STRING_LARGE,
+               "[CHAMPIONSHIP] Waiting for more players!\n");
       break;
-    case 2:
-      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
-               "Championship has started\n");
+    case CS_LACK_PLAYERS:
+      snprintf(message, STRING_LARGE,
+               "[CHAMPIONSHIP] Someone left and no longer have minimum players "
+               "to start!\n");
       break;
-    case 3:
-      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
-               "Championship has been canceled due to lack of players\n");
+    case CS_STARTED:
+      snprintf(message, STRING_LARGE,
+               "[CHAMPIONSHIP] It started! Good luck!\n");
       break;
-    case 4:
-      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
-               "Waiting %d seconds for more players\n",
+    case CS_LACK_PLAYERS_DURING:
+      snprintf(message, STRING_LARGE,
+               "[CHAMPIONSHIP] Someone left and the championship was canceled! "
+               "Reason: Not enough players!\n");
+      break;
+    case CS_ENDED:
+      snprintf(message, STRING_LARGE,
+               "[CHAMPIONSHIP] It ended! And the winner is...\n",
                app->referee.waitingDuration);
       break;
-    case 5:
-      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
-               "Championship is now full! Starting...\n");
-      break;
+    case CS_WINNER: {
+      Player *winner = null;
+      for (int i = 0; i < app->referee.maxPlayers; i++) {
+        if (app->playerList[i].active) {
+          if (winner == null ||
+              app->playerList[i].lastScore > winner->lastScore) {
+            winner = &app->playerList[i];
+          }
+        }
+      }
+      if (winner == null) {
+        printf("[ERROR] - Could not get any winner! Odd...\n");
+        snprintf(message, STRING_LARGE, "[CHAMPIONSHIP] No one! Odd...\n");
+      } else {
+        printf("[INFO] - Winner is %s with %d score!\n", winner->username,
+               winner->lastScore);
+        snprintf(message, STRING_LARGE, "[CHAMPIONSHIP] %s with %d points!\n",
+                 winner->username, winner->lastScore);
+      }
+
+    } break;
     default:
-      snprintf(tossComm.championshipMsg.msg, STRING_LARGE,
-               "I forgot what i was about to say...\n");
-      break;
+      return;
   }
   for (int i = 0; i < app->referee.maxPlayers; i++) {
     if (app->playerList[i].active) {
-      int writtenBytes =
-          write(app->playerList[i].fdComm_Write, &tossComm, sizeof(TossComm));
-      if (writtenBytes <= 0) {
-        printf("[ERROR] Could not broadcast to %s... Error: %d\n",
-               app->playerList[i].username, errno);
-      }
+      TossComm *tossComm = malloc(sizeof(TossComm));
+      tossComm->tossType = TCRT_CHAMPIONSHIP_MSG;
+      snprintf(tossComm->championshipMsg.msg, STRING_LARGE, "%s", message);
+
+      Service_SendTossComm(app, app->playerList[i].procId, tossComm);
     }
   }
 }
