@@ -21,6 +21,7 @@ void Service_HandleSelfCommand(Application *app, char *command);
 bool Service_KickPlayer(Application *app, char *username);
 void Service_Exit(Application *app);
 void Service_OpenGame(Application *app, int playerProcId);
+void Service_CloseGame(Application *app, int playerProcId);
 void Service_BroadcastChampionshipState(Application *app, int state);
 void Service_SendTossComm(Application *app, int procId, TossComm *tossComm);
 

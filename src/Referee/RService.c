@@ -44,7 +44,7 @@ bool Setup_Application(Application *app, int argc, char **argv) {
   }
 
   for (int i = 0; i < app->referee.maxPlayers; i++) {
-    memset(&app->playerList[i], '\0', sizeof(Player));
+    memset(&app->playerList[i], 0, sizeof(Player));
     app->playerList[i].active = false;
   }
 
@@ -335,8 +335,8 @@ void Service_PlayerInput(Application *app, int procId, char *command) {
   // Check if received input is a command or an input directed to the game
   if (command[0] == '#') {
     if (DEBUG) {
-      printf("[DEBUG] - Received a command: %s from Player with procId: %d\n",
-             command, procId);
+      printf("[DEBUG] - Received a command: %s from %s with procId: %d\n",
+             command, app->playerList[playerIndex].username, procId);
     }
 
     // Create a response comm
@@ -354,9 +354,8 @@ void Service_PlayerInput(Application *app, int procId, char *command) {
   } else {
     // An input directed to the game does not need an answer
     if (DEBUG) {
-      printf(
-          "[DEBUG] - Received a game input: %s from Player with procId: %d\n",
-          command, procId);
+      printf("[DEBUG] - Received a game input: %s from %s with procId: %d\n",
+             command, app->playerList[playerIndex].username, procId);
     }
 
     Player player = app->playerList[playerIndex];
@@ -523,6 +522,7 @@ void Service_OpenGame(Application *app, int playerProcId) {
     };
 
     app->playerList[playerIndex].gameProc.active = true;
+    app->playerList[playerIndex].gameProc.procId = forkStatus;
 
     app->playerList[playerIndex].gameProc.fdReadFromGame = fdGame2Referee[0];
     app->playerList[playerIndex].gameProc.fdWriteToGame = fdReferee2Game[1];
@@ -530,6 +530,38 @@ void Service_OpenGame(Application *app, int playerProcId) {
     snprintf(app->playerList[playerIndex].gameProc.gameName, STRING_MEDIUM,
              "%s", app->availableGames.gameList[randomGameIndex].fileName);
   }
+}
+
+void Service_CloseGame(Application *app, int playerProcId) {
+  int playerIndex = getPlayerIndexByProcId(app, playerProcId);
+  if (playerIndex == -1) {
+    printf("[ERROR] - Tried to open a game for a non existing player!\n");
+    return;
+  }
+
+  Player *player = &app->playerList[playerIndex];
+
+  int status;
+
+  kill(player->gameProc.procId, SIGUSR1);
+  if (waitpid(player->gameProc.procId, &status, WUNTRACED) == -1) {
+    printf("[ERROR] - Failed waiting for %s game! Error: %d\n",
+           player->username, errno);
+    exit(EXIT_FAILURE);
+  }
+
+  if (DEBUG) {
+    printf("[DEBUG] - Retrieved score of %d from %s game!\n",
+           WEXITSTATUS(status), player->username);
+  }
+
+  close(player->gameProc.fdReadFromGame);
+  close(player->gameProc.fdWriteToGame);
+
+  player->gameProc.active = false;
+  player->lastScore = WEXITSTATUS(status);
+
+  memset(player->gameProc.gameName, '\0', STRING_MEDIUM);
 }
 
 void Service_BroadcastChampionshipState(Application *app, int state) {

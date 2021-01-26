@@ -62,7 +62,7 @@ void* Thread_ReceiveEntryRequests(void* _param) {
        * No need to block named pipe write operations since pipe write
        * operations are atomic (One operation at a time)
        *
-       * Only situation a block would be needed is when the writtings would
+       * A situation where a block would be needed is when the writtings would
        * exceed the buffer size, which the minimum is 512 bytes and default
        * "On Linux, it's 4096 bytes"
        *
@@ -99,24 +99,6 @@ void* Thread_ReceiveEntryRequests(void* _param) {
       // Reset temp named pipe
       close(failedPlayer_fdComm_Write);
     }
-
-    /** TAG_CODE
-     * This code is used to handle the player input
-     * Refactor into new use and move to appropriate named pipe handler
-     */
-    // case QnART_INPUT: {
-    //   PlayerInputResponse resp =
-    //       Service_PlayerInput(param->app,
-    //       request.playerInputRequest.procId,
-    //                           request.playerInputRequest.command);
-    //   if (resp.playerInputResponseType != PIR_INPUT &&
-    //       resp.playerInputResponseType != PIR_INVALID) {
-    //     tossComm.tossType = TCRT_INPUT_RESP;
-    //     tossComm.playerInputResponse = resp;
-    //   } else {
-    //     continue;
-    //   }
-    // } break;
   }
 
   close(fdQnARequest_Read);
@@ -223,24 +205,34 @@ void* Thread_WriteToSpecificPlayer(void* _param) {
 #pragma region Each Player Game Handle
 void* Thread_ReadFromGame(void* _param) {
   TParam_ReadFromGame* param = (TParam_ReadFromGame*)_param;
+  Player myPlayer = param->app->playerList[param->myPlayerIndex];
 
   char buffer[STRING_LARGE];
   int readBytes;
-  Player myPlayer = param->app->playerList[param->myPlayerIndex];
+
   TossComm tossComm;
   tossComm.tossType = TCRT_GAME_OUTPUT;
-  do {
+
+  while (1) {
+    // Reset buffer
+    memset(buffer, '\0', STRING_LARGE);
+
+    // Read from game
     readBytes = read(myPlayer.gameProc.fdReadFromGame,
                      tossComm.gameOutput.output, sizeof(tossComm.gameOutput));
+    if (readBytes == 0) {
+      break;
+    }
 
+    // Redirect to player
     int writtenBytes =
         write(param->app->playerList[param->myPlayerIndex].fdComm_Write,
               &tossComm, sizeof(TossComm));
+  };
 
-    memset(buffer, '\0', STRING_LARGE);
-  } while (readBytes >= 0);
-
-  close(myPlayer.gameProc.fdReadFromGame);
+  if (DEBUG) {
+    printf("[DEBUG] - Got disconnected from %s game!\n", myPlayer.username);
+  }
   free(param);
   return (void*)EXIT_SUCCESS;
 }
@@ -317,6 +309,29 @@ void* Thread_ChampionshipFlow(void* _param) {
 #pragma endregion
 
 #pragma region Close game for each player
+    for (int i = 0; i < app->referee.maxPlayers; i++) {
+      if (app->playerList[i].active) {
+        Service_CloseGame(app, app->playerList[i].procId);
+      }
+    }
+#pragma endregion
+
+#pragma region Communicate who won
+    Player* winner = null;
+    for (int i = 0; i < app->referee.maxPlayers; i++) {
+      if (app->playerList[i].active) {
+        if (winner == null ||
+            app->playerList[i].lastScore > winner->lastScore) {
+          winner = &app->playerList[i];
+        }
+      }
+    }
+    if (winner == null) {
+      printf("[WARNING] - Could not get any winner! Odd...\n");
+    } else {
+      printf("[INFO] - Winner is %s with %d score!\n", winner->username,
+             winner->lastScore);
+    }
 #pragma endregion
   }
 

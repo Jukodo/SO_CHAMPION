@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "../Utils/CCommunication.h"
@@ -45,6 +46,7 @@ typedef struct Application
 
 struct GameProc {
   bool active;
+  int procId;
 
   pthread_t gameHandleThread;
 
@@ -64,6 +66,7 @@ struct Player {
 
   char username[STRING_LARGE];
   int procId;
+  int lastScore;
 
   GameProc gameProc;
 

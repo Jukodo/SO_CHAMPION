@@ -10,10 +10,7 @@
 #define GAME_TITLE "RNGGuess"
 
 int score = 0;
-void handle_sigusr1(int sig) {
-  printf("Received signal: %d AKA SIGUSR1", sig);
-  exit(score);
-}
+void handle_sigusr1(int sig) { exit(score); }
 
 void Setup_SIGUSR1() {
   struct sigaction sa = {0};  //{0} - The struct starts with 0's

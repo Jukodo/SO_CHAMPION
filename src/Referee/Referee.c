@@ -3,8 +3,6 @@
 #include "RService.h"
 
 void handle_sigusr1(int sig) {
-  printf("\n\tReceived signal: %d...\n", sig);
-  printf("\tClosing App and deleting FIFOs!\n");
   unlink(FIFO_REFEREE_ENTRY);
   exit(EXIT_SUCCESS);
 }
