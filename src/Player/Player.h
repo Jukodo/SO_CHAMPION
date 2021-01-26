@@ -16,7 +16,7 @@
 #include "../Utils/CCommunication.h"
 #include "../Utils/Utils.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 typedef struct Player Player;
 

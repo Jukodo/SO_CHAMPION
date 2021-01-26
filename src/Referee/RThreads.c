@@ -249,52 +249,75 @@ void* Thread_ReadFromGame(void* _param) {
 #pragma region Championship Flow
 void* Thread_ChampionshipFlow(void* _param) {
   TParam_ChampionshipFlow* param = (TParam_ChampionshipFlow*)_param;
+  Application* app = param->app;
 
   bool canStart;
   struct timespec ts;
+
+  // Enters endless cycle, being always ready to start a championship, if not
+  // already ongoing
   while (true) {
     canStart = false;
     do {
-      param->app->referee.isChampionshipClosed = false;
+#pragma region Wait until minimum players are logged in
+      app->referee.isChampionshipClosed = false;
       if (DEBUG) {
         printf("[DEBUG] - Championship is ready to start!\n");
       }
       // Only unlocked when at least 2 players have joined
-      pthread_mutex_lock(&param->app->mutStartChampionship);
+      pthread_mutex_lock(&app->mutStartChampionship);
+#pragma endregion
 
+#pragma region Wait for more players
       // Start a timer to wait for more players
       if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
         printf("[ERROR] - Clock getTime failed! Error: %d\n", perror);
         return (void*)EXIT_FAILURE;
       }
-      ts.tv_sec += param->app->referee.waitingDuration;
+      ts.tv_sec += app->referee.waitingDuration;
 
       printf("[INFO] - Waiting for players for %d seconds\n",
-             param->app->referee.waitingDuration);
-      pthread_mutex_timedlock(&param->app->mutCountdown, &ts);
-      param->app->referee.isChampionshipClosed = true;
+             app->referee.waitingDuration);
+      pthread_mutex_timedlock(&app->mutCountdown, &ts);
+      app->referee.isChampionshipClosed = true;
       printf("[INFO] - Lobby has closed! Currently active players: %d\n",
-             getQuantityPlayers(param->app));
+             getQuantityPlayers(app));
+#pragma endregion
 
+#pragma region Check if can really start
       // After the timer ends, check if at least 2 players are logged in, if
       // not restart championship to initial state
-      canStart = getQuantityPlayers(param->app) >= DEFAULT_MINPLAYERS_START;
+      canStart = getQuantityPlayers(app) >= DEFAULT_MINPLAYERS_START;
 
       if (!canStart) {
-        Service_BroadcastChampionshipState(param->app, 3);
+        Service_BroadcastChampionshipState(app, 3);
       }
+#pragma endregion
     } while (!canStart);
 
+#pragma region Open game for each player
+    for (int i = 0; i < app->referee.maxPlayers; i++) {
+      if (app->playerList[i].active) {
+        Service_OpenGame(app, app->playerList[i].procId);
+      }
+    }
+#pragma endregion
+
+#pragma region Wait for championship duration to end
     if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
       printf("[ERROR] - Clock getTime failed! Error: %d\n", perror);
       return (void*)EXIT_FAILURE;
     }
-    ts.tv_sec += param->app->referee.championshipDuration;
+    ts.tv_sec += app->referee.championshipDuration;
 
     printf("[INFO] - Championship has started! Ending in %d seconds...\n",
-           param->app->referee.championshipDuration);
-    pthread_mutex_timedlock(&param->app->mutCountdown, &ts);
+           app->referee.championshipDuration);
+    pthread_mutex_timedlock(&app->mutCountdown, &ts);
     printf("[INFO] - Championship ended!\n");
+#pragma endregion
+
+#pragma region Close game for each player
+#pragma endregion
   }
 
   free(param);

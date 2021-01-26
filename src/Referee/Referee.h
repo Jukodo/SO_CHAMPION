@@ -17,11 +17,11 @@
 #include "../Utils/CCommunication.h"
 #include "../Utils/Utils.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 #define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Execs/Games/"
 #define DEFAULT_MAXPLAYER 10
-#define DEFAULT_MINPLAYERS_START 5
+#define DEFAULT_MINPLAYERS_START 2
 
 #define MIN_CHAMP_DURATION 60000
 #define MAX_CHAMP_DURATION 600000
