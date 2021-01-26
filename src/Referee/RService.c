@@ -361,8 +361,10 @@ void Service_PlayerInput(Application *app, int procId, char *command) {
 
     Player player = app->playerList[playerIndex];
     if (player.gameProc.active) {
-      printf("[INFO] - Trying to write %s to game of player [%s]\n", command,
-             player.username);
+      if (DEBUG) {
+        printf("[DEBUG] - Trying to write %s to game of player [%s]\n", command,
+               player.username);
+      }
       if (write(player.gameProc.fdWriteToGame, command, STRING_LARGE) == -1) {
         printf("[ERROR] - Could not write to game... Error: %d", errno);
       }
