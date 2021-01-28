@@ -172,34 +172,6 @@ void* Thread_ReadFromSpecificPlayer(void* _param) {
   free(param);
   return (void*)EXIT_SUCCESS;
 }
-
-/**This thread will be instanced and destroyed as soon as the comm has been
- * sent.
- * This is a thread to send information without blocking other tasks.
- */
-void* Thread_WriteToSpecificPlayer(void* _param) {
-  if (DEBUG) {
-    printf("[DEBUG] - Started a thread to send a comm response\n");
-  }
-
-  TParam_WriteToSpecificPlayer* param = (TParam_WriteToSpecificPlayer*)_param;
-  Player* myPlayer = &param->app->playerList[param->myPlayerIndex];
-  TossComm* tossComm = param->tossComm;
-
-  // Send toss comm
-  if (write(myPlayer->fdComm_Write,  // File Descriptor
-            tossComm,                // Value
-            sizeof(TossComm)         // Size of written value
-            ) == -1) {
-    printf("[ERROR] - Could not write to Referee's named pipe! Error: %d\n",
-           errno);
-    return (void*)EXIT_FAILURE;
-  }
-
-  free(tossComm);
-  free(param);
-  return (void*)EXIT_SUCCESS;
-}
 #pragma endregion
 
 #pragma region Each Player Game Handle
@@ -258,13 +230,14 @@ void* Thread_ChampionshipFlow(void* _param) {
         printf("[DEBUG] - Championship is ready to start!\n");
       }
 
+      pthread_mutex_trylock(&app->mutStartChampionship);
       if (getQuantityPlayers(app) < DEFAULT_MINPLAYERS_START) {
         // Only unlocked when at least 2 players have joined
         pthread_mutex_lock(&app->mutStartChampionship);
       }
 
-      // Give a small time for the last player to join and connect properly
-      sleep(2);
+      // // Give a small time for the last player to join and connect properly
+      // sleep(2);
 #pragma endregion
 
 #pragma region Wait for more players
@@ -314,7 +287,6 @@ void* Thread_ChampionshipFlow(void* _param) {
     printf("[INFO] - Championship has started! Ending in %d seconds...\n",
            app->referee.championshipDuration);
 
-    // Make sure the mutex is locked in this point
     pthread_mutex_timedlock(&app->mutCountdown, &ts);
 #pragma endregion
 
@@ -334,8 +306,8 @@ void* Thread_ChampionshipFlow(void* _param) {
       continue;
     }
 
-    // Give a bit of pressure while waiting for results
-    sleep(2);
+    // // Give a bit of pressure while waiting for results
+    // sleep(2);
 
     printf("[INFO] - Championship ended!\n");
 #pragma endregion
@@ -350,6 +322,11 @@ void* Thread_ChampionshipFlow(void* _param) {
 
 #pragma region Communicate who won
     Service_BroadcastChampionshipState(app, CS_WINNER);
+#pragma endregion
+
+#pragma region Communicate championship restart
+    app->referee.championshipCount++;
+    Service_BroadcastChampionshipState(app, CS_RESTARTING);
 #pragma endregion
   }
 

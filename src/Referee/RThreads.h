@@ -33,7 +33,6 @@ void* Thread_ReceiveEntryRequests(void* _param);
 
 // Each Player Private Named Pipe Handles
 void* Thread_ReadFromSpecificPlayer(void* _param);
-void* Thread_WriteToSpecificPlayer(void* _param);
 
 // Each Player Game Handle
 void* Thread_ReadFromGame(void* _param);

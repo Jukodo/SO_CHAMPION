@@ -59,8 +59,6 @@ int main(int argc, char** argv) {
     pthread_mutex_lock(app->mutexHandles.hMutex_LoggedIn);
   } while (!app->player.loggedIn);
 
-  Service_OpenPrivateWrite(app);
-
   printf("\nWelcome to the championship %s!\n", username);
   printf("\tWrite any command below:\n");
 #pragma endregion

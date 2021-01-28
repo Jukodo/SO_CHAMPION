@@ -49,6 +49,7 @@ enum ChampionshipState {
   CS_STARTED,
   CS_ENDED,
   CS_WINNER,
+  CS_RESTARTING,
 };
 
 typedef struct Application
@@ -63,6 +64,8 @@ struct GameProc {
 
   int fdReadFromGame;
   int fdWriteToGame;
+
+  bool blockedComms;
 
   char gameName[STRING_MEDIUM];
 };
@@ -95,6 +98,8 @@ struct Referee {
 
   int championshipDuration;
   int waitingDuration;
+
+  int championshipCount;
 };
 
 struct AvailableGames {

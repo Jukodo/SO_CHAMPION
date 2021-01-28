@@ -10,6 +10,7 @@ bool Setup_Application(Application *app, int argc, char **argv) {
   app->availableGames.gameList = NULL;
   app->availableGames.quantityGames = 0;
   app->referee.isChampionshipClosed = false;
+  app->referee.championshipCount = 1;
 
   memset(app->referee.gameDir, '\0', STRING_MEDIUM);
   app->referee.maxPlayers = 0;
@@ -402,26 +403,34 @@ PlayerInputResponse Service_HandlePlayerCommand(Application *app, int procId,
 }
 
 void Service_HandleSelfCommand(Application *app, char *command) {
-  char *commandName = strtok(command, " ");
+  if (Utils_StringIsEmpty(command)) {
+    return;
+  }
 
-  if (strcmp(commandName, "players") == 0) {
+  // Plain commands
+  if (strcmp(command, "players") == 0) {
     Print_PlayerList(app);
-  } else if (strcmp(commandName, "games") == 0) {
+  } else if (strcmp(command, "games") == 0) {
     Print_AvailableGameList(app);
-  } else if (strcmp(commandName, "k") == 0) {
-    char *commandValue = strtok(NULL, " ");
-    Service_KickPlayer(app, commandValue);
-  } else if (strcmp(commandName, "exit") == 0) {
+  } else if (strcmp(command, "exit") == 0) {
     Service_Exit(app);
-  } else if (strcmp(commandName, "t_opengame") == 0) {
+  }
+  // User target commands
+  else if (command[0] == 'k') {
+    Service_KickPlayer(app, command + 1);
+  } else if (command[0] == 's') {
+    Service_SetPlayerAndGameDoor(app, command + 1, false);
+  } else if (command[0] == 'r') {
+    Service_SetPlayerAndGameDoor(app, command + 1, true);
+  }
+  // Testing commands
+  else if (strcmp(command, "t_opengame") == 0) {
     if (app->playerList[0].active) {
       Service_OpenGame(app, app->playerList[0].procId);
     }
-  } else if (strcmp(commandName, "t_unlockcsf") == 0) {
+  } else if (strcmp(command, "t_unlockchamp") == 0) {
     pthread_mutex_unlock(&app->mutStartChampionship);
-  } else if (strcmp(commandName, "t_unlocklb") == 0) {
-    pthread_mutex_unlock(&app->mutCountdown);
-  } else if (strcmp(commandName, "t_unlockcs") == 0) {
+  } else if (strcmp(command, "t_unlockcd") == 0) {
     pthread_mutex_unlock(&app->mutCountdown);
   }
 }
@@ -448,10 +457,39 @@ bool Service_KickPlayer(Application *app, char *username) {
   int writtenBytes = write(app->playerList[playerIndex].fdComm_Write, &tossComm,
                            sizeof(TossComm));
   if (writtenBytes != sizeof(TossComm)) {
-    printf("[ERROR] - Could not kick player %s! Error unknown...\n", username);
+    printf(
+        "[ERROR] - Could not inform player %s about being kicked! Error "
+        "unknown...\n",
+        username);
   }
 
   Clean_Player(app, app->playerList[playerIndex].procId);
+  return true;
+}
+
+bool Service_SetPlayerAndGameDoor(Application *app, char *username,
+                                  bool newStatus) {
+  int foundPlayerIndex = getPlayerIndexByUsername(app, username);
+  if (foundPlayerIndex == -1) {
+    printf(
+        "[WARNING] - Cannot change Player ([%s]) <-> Game door new status! "
+        "Player could not be found...\n",
+        username);
+    return false;
+  }
+
+  Player *foundPlayer = &app->playerList[foundPlayerIndex];
+  if (!foundPlayer->gameProc.active) {
+    printf(
+        "[WARNING] - Cannot change Player ([%s]) <-> Game door new status! "
+        "Player is not playing at the moment...\n",
+        username);
+    return false;
+  }
+
+  printf("[INFO] - Player ([%s]) <-> Game door new status! Status: %d\n",
+         username, newStatus);
+  foundPlayer->gameProc.blockedComms = newStatus;
   return true;
 }
 
@@ -575,29 +613,34 @@ void Service_BroadcastChampionshipState(Application *app,
   switch (state) {
     case CS_WAIT_PLAYERS:
       snprintf(message, STRING_LARGE,
-               "[CHAMPIONSHIP] Waiting for more players for %d seconds!\n",
-               app->referee.waitingDuration);
+               "[CHAMPIONSHIP #%d] Waiting for more players for %d seconds!\n",
+               app->referee.championshipCount, app->referee.waitingDuration);
       break;
     case CS_LACK_PLAYERS:
-      snprintf(message, STRING_LARGE,
-               "[CHAMPIONSHIP] Someone left and no longer have minimum players "
-               "to start!\n");
+      snprintf(
+          message, STRING_LARGE,
+          "[CHAMPIONSHIP #%d] Someone left and no longer have minimum players "
+          "to start!\n",
+          app->referee.championshipCount);
       break;
     case CS_STARTED:
-      snprintf(message, STRING_LARGE,
-               "[CHAMPIONSHIP] It started! Good luck! Championship ends in %d "
-               "seconds!\n",
-               app->referee.championshipDuration);
+      snprintf(
+          message, STRING_LARGE,
+          "[CHAMPIONSHIP #%d] It started! Good luck! Championship ends in %d "
+          "seconds!\n",
+          app->referee.championshipCount, app->referee.championshipDuration);
       break;
     case CS_LACK_PLAYERS_DURING:
-      snprintf(message, STRING_LARGE,
-               "[CHAMPIONSHIP] Someone left and the championship was canceled! "
-               "Reason: Not enough players!\n");
+      snprintf(
+          message, STRING_LARGE,
+          "[CHAMPIONSHIP #%d] Someone left and the championship was canceled! "
+          "Reason: Not enough players!\n",
+          app->referee.championshipCount);
       break;
     case CS_ENDED:
       snprintf(message, STRING_LARGE,
-               "[CHAMPIONSHIP] It ended! And the winner is...\n",
-               app->referee.waitingDuration);
+               "[CHAMPIONSHIP #%d] It ended! And the winner is...\n",
+               app->referee.championshipCount, app->referee.waitingDuration);
       break;
     case CS_WINNER: {
       Player *winner = null;
@@ -611,15 +654,23 @@ void Service_BroadcastChampionshipState(Application *app,
       }
       if (winner == null) {
         printf("[ERROR] - Could not get any winner! Odd...\n");
-        snprintf(message, STRING_LARGE, "[CHAMPIONSHIP] No one! Odd...\n");
+        snprintf(message, STRING_LARGE, "[CHAMPIONSHIP #%d] No one! Odd...\n");
       } else {
         printf("[INFO] - Winner is %s with %d score!\n", winner->username,
                winner->lastScore);
-        snprintf(message, STRING_LARGE, "[CHAMPIONSHIP] %s with %d points!\n",
-                 winner->username, winner->lastScore);
+        snprintf(message, STRING_LARGE,
+                 "[CHAMPIONSHIP #%d] %s with %d points!\n",
+                 app->referee.championshipCount, winner->username,
+                 winner->lastScore);
       }
 
     } break;
+    case CS_RESTARTING:
+      snprintf(message, STRING_LARGE,
+               "[CHAMPIONSHIP #%d] Championship #%d is starting soon... Get "
+               "ready!\n",
+               app->referee.championshipCount, app->referee.championshipCount);
+      break;
     default:
       return;
   }
@@ -639,32 +690,25 @@ void Service_BroadcastChampionshipState(Application *app,
  * Fill up the toss comm and inform which procId should it send to
  */
 void Service_SendTossComm(Application *app, int procId, TossComm *tossComm) {
-  int sendToIndex = getPlayerIndexByProcId(app, procId);
-  if (sendToIndex == -1) {
+  int sendToPlayerIndex = getPlayerIndexByProcId(app, procId);
+  if (sendToPlayerIndex == -1) {
     printf("[WARNING] - Could not find Player with procId: %d\n", procId);
     return;
   }
 
-  // Create a thread param for said thread
-  TParam_WriteToSpecificPlayer *param =
-      malloc(sizeof(TParam_WriteToSpecificPlayer));
-  if (param == NULL) {
-    free(tossComm);
+  Player *sendToPlayer = &app->playerList[sendToPlayerIndex];
+
+  // Send toss comm
+  if (write(sendToPlayer->fdComm_Write,  // File Descriptor
+            tossComm,                    // Value
+            sizeof(TossComm)             // Size of written value
+            ) == -1) {
+    printf("[ERROR] - Could not write to Referee's named pipe! Error: %d\n",
+           errno);
     return;
   }
 
-  param->app = app;
-  param->myPlayerIndex = sendToIndex;
-  param->tossComm = tossComm;
-
-  // Create thread so that this operation won't block other operations
-  pthread_t currThread;
-  if (pthread_create(&currThread, NULL, &Thread_WriteToSpecificPlayer,
-                     (void *)param) != 0) {
-    free(tossComm);
-    free(param);
-    return;
-  };
+  free(tossComm);
 }
 
 /**
@@ -742,6 +786,8 @@ void Clean_Player(Application *app, int procId) {
     return;
   }
 
+  // fdComm_Read is not closed, it is assumed that the thread handling the Read
+  // will exit the loop (by reading 0 bytes) and close its named pipe
   close(app->playerList[playerIndex].fdComm_Write);
   memset(&app->playerList[playerIndex], '\0', sizeof(Player));
   app->playerList[playerIndex].active = false;

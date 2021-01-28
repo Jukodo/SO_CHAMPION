@@ -52,11 +52,15 @@ bool Setup_NamedPipes(Application *app) {
   if (mkfifo(fifoName_PlayerWrite, 0777) == -1) {
     // Only returns error if file does not exist after operation
     if (errno != EEXIST) {
-      printf("[ERROR] Unexpected error on mkfifo()! Error: %d\n", errno);
+      printf("[ERROR] - Unexpected error on mkfifo()! Error: %d\n", errno);
       return false;
     }
   }
 
+  if (!Service_OpenPrivateWrite(app)) {
+    printf("[ERROR] - Unexpected error waiting for named pipe open!\n");
+    return false;
+  }
   if (DEBUG) {
     printf(
         "[DEBUG] - Created a named pipe named %s... Objetive: Write to "
@@ -95,42 +99,50 @@ bool Setup_Threads(Application *app) {
 }
 
 bool Service_Login(Application *app, char *username) {
-  TParam_SendEntryRequest *param =
-      (TParam_SendEntryRequest *)malloc(sizeof(TParam_SendEntryRequest));
+  EntryRequest entryRequest;
+
+  strcpy(entryRequest.username, username);
+  entryRequest.procId = getpid();
+
+  if (write(app->namedPipeHandles.fdComm_Entry,  // File Descriptor
+            &entryRequest,                       // Value
+            sizeof(EntryRequest)                 // Size of written value
+            ) == -1) {
+    printf(
+        "[ERROR] - Could not communicate with Referee's entry named pipe! "
+        "Error: "
+        "%d\n",
+        errno);
+
+    return false;
+  }
+
+  return true;
+}
+
+/**Create a thread that waits until named pipe has been open on the Referee side
+ *
+ * Why: When the 2nd (Defined minimum players to start championship) player
+ * joins the championship will start right away, however, this named pipe will
+ * not be open at the moment, and the player will not receive the Championship
+ * Status, this way, it will be instantly
+ */
+bool Service_OpenPrivateWrite(Application *app) {
+  TParam_OpenPrivateWrite *param = malloc(sizeof(TParam_OpenPrivateWrite));
   if (param == NULL) {
     return false;
   }
 
   param->app = app;
-  strcpy(param->entryRequest.username, username);
-  param->entryRequest.procId = getpid();
 
   pthread_t currThread;
-  if (pthread_create(&currThread, NULL, &Thread_SendEntryRequest,
+  if (pthread_create(&currThread, NULL, &Thread_OpenPrivateWrite,
                      (void *)param) != 0) {
     free(param);
     return false;
   };
 
   return true;
-}
-
-void Service_OpenPrivateWrite(Application *app) {
-  char fifoName_PlayerWrite[STRING_LARGE];
-  sprintf(fifoName_PlayerWrite, "%s_%d", FIFO_PLAYER_TO_REFEREE, getpid());
-
-  app->namedPipeHandles.fdComm_Write = open(fifoName_PlayerWrite, O_WRONLY);
-  if (app->namedPipeHandles.fdComm_Write == -1) {
-    printf("[ERROR] - Unexpected error on open()! Error: %d\n", errno);
-    return;
-  }
-
-  if (DEBUG) {
-    printf("[DEBUG] - I have opened my named pipe %s for writting!\n",
-           fifoName_PlayerWrite);
-  }
-
-  return;
 }
 
 bool Service_Input(Application *app, char *command) {
@@ -155,24 +167,19 @@ bool Service_Input(Application *app, char *command) {
  * Fill up the toss comm and inform which procId should it send to
  */
 void Service_SendTossComm(Application *app, TossComm *tossComm) {
-  // Create a thread param for said thread
-  TParam_WriteToReferee *param = malloc(sizeof(TParam_WriteToReferee));
-  if (param == NULL) {
-    free(tossComm);
+  // Send entry request
+  if (write(app->namedPipeHandles.fdComm_Write,  // File Descriptor
+            tossComm,                            // Value
+            sizeof(TossComm)                     // Size of written value
+            ) == -1) {
+    printf(
+        "[ERROR] - Could not write to Referee's named pipe! Error: "
+        "%d\n",
+        errno);
     return;
   }
 
-  param->app = app;
-  param->tossComm = tossComm;
-
-  // Create thread so that this operation won't block other operations
-  pthread_t currThread;
-  if (pthread_create(&currThread, NULL, &Thread_WriteToReferee,
-                     (void *)param) != 0) {
-    free(tossComm);
-    free(param);
-    return;
-  };
+  free(tossComm);
 }
 
 void Print_Application(Application *app) {

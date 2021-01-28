@@ -3,52 +3,24 @@
 #include "PService.h"
 #include "Player.h"
 
-/**This thread will be instanced and destroyed as soon as the request has been
- * sent.
- * This is a thread to send information without blocking other tasks.
- */
-void* Thread_SendEntryRequest(void* _param) {
-  TParam_SendEntryRequest* param = (TParam_SendEntryRequest*)_param;
+void* Thread_OpenPrivateWrite(void* _param) {
+  TParam_OpenPrivateWrite* param = (TParam_OpenPrivateWrite*)_param;
 
-  // Send entry request
-  if (write(param->app->namedPipeHandles.fdComm_Entry,  // File Descriptor
-            &param->entryRequest,                       // Value
-            sizeof(EntryRequest)                        // Size of written value
-            ) == -1) {
-    printf(
-        "[ERROR] - Could not communicate with Referee's entry named pipe! "
-        "Error: "
-        "%d\n",
-        errno);
+  char fifoName_PlayerWrite[STRING_LARGE];
+  sprintf(fifoName_PlayerWrite, "%s_%d", FIFO_PLAYER_TO_REFEREE, getpid());
+
+  param->app->namedPipeHandles.fdComm_Write =
+      open(fifoName_PlayerWrite, O_WRONLY);
+  if (param->app->namedPipeHandles.fdComm_Write == -1) {
+    printf("[ERROR] - Unexpected error on open()! Error: %d\n", errno);
     return (void*)EXIT_FAILURE;
   }
 
-  close(param->app->namedPipeHandles.fdComm_Entry);
-  free(param);
-  return (void*)EXIT_SUCCESS;
-}
-
-/**This thread will be instanced and destroyed as soon as the comm has been
- * sent.
- * This is a thread to send information without blocking other tasks.
- */
-void* Thread_WriteToReferee(void* _param) {
-  TParam_WriteToReferee* param = (TParam_WriteToReferee*)_param;
-  TossComm* tossComm = param->tossComm;
-
-  // Send entry request
-  if (write(param->app->namedPipeHandles.fdComm_Write,  // File Descriptor
-            tossComm,                                   // Value
-            sizeof(TossComm)                            // Size of written value
-            ) == -1) {
-    printf(
-        "[ERROR] - Could not write to Referee's named pipe! Error: "
-        "%d\n",
-        errno);
-    return (void*)EXIT_FAILURE;
+  if (DEBUG) {
+    printf("[DEBUG] - I have opened my named pipe %s for writting!\n",
+           fifoName_PlayerWrite);
   }
 
-  free(tossComm);
   free(param);
   return (void*)EXIT_SUCCESS;
 }
@@ -144,7 +116,9 @@ void* Thread_ReadFromReferee(void* _param) {
   }
 
   printf("[INFO] - Lost connection to server!\n");
-
   free(param);
+
+  kill(getpid(), SIGUSR1);
+
   return (void*)EXIT_SUCCESS;
 }

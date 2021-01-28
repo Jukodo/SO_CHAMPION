@@ -19,6 +19,8 @@ PlayerInputResponse Service_HandlePlayerCommand(Application *app, int procId,
                                                 char *command);
 void Service_HandleSelfCommand(Application *app, char *command);
 bool Service_KickPlayer(Application *app, char *username);
+bool Service_SetPlayerAndGameDoor(Application *app, char *username,
+                                  bool newStatus);
 void Service_Exit(Application *app);
 void Service_OpenGame(Application *app, int playerProcId);
 void Service_CloseGame(Application *app, int playerProcId);
