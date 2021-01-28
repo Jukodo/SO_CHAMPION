@@ -108,6 +108,16 @@ void* Thread_ReadFromReferee(void* _param) {
         case TCRT_CHAMPIONSHIP_MSG:
           printf("%s\n", receivedTossComm.championshipMsg.msg);
           break;
+        case TCRT_DOOR_BLOCKED:
+          printf(
+              "[COMMUNICATION] Your communication with your game has been "
+              "blocked! Hope that the Referee will unblock you soon...\n");
+          break;
+        case TCRT_DOOR_UNBLOCKED:
+          printf(
+              "[COMMUNICATION] Your communication with your game has been "
+              "unblocked! Friendly Referee...\n");
+          break;
         default:
           printf("[WARNING] - I got information but it is unhandled!\n");
           break;

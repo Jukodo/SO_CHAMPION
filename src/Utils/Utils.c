@@ -23,13 +23,13 @@ bool Utils_StringIsNumber(char* str) {
 }
 
 bool Utils_StringIsEmpty(char* str) {
-  if (str == null || str[0] == '\0' || str[0] == '\n' || strlen(str) == 0)
+  if (str == NULL || str[0] == '\0' || str[0] == '\n' || strlen(str) == 0)
     return true;
 
   return false;
 }
 
-void Utils_GenerateNewRandSeed() { srand((unsigned int)time(null)); }
+void Utils_GenerateNewRandSeed() { srand((unsigned int)time(NULL)); }
 
 int Utils_GetRandomNumber(int min, int max) {
   return (rand() % max - min) + min;

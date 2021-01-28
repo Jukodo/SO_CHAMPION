@@ -177,7 +177,7 @@ void* Thread_ReadFromSpecificPlayer(void* _param) {
 #pragma region Each Player Game Handle
 void* Thread_ReadFromGame(void* _param) {
   TParam_ReadFromGame* param = (TParam_ReadFromGame*)_param;
-  Player myPlayer = param->app->playerList[param->myPlayerIndex];
+  Player* myPlayer = &param->app->playerList[param->myPlayerIndex];
 
   char buffer[STRING_LARGE];
   int readBytes;
@@ -190,20 +190,28 @@ void* Thread_ReadFromGame(void* _param) {
     memset(buffer, '\0', STRING_LARGE);
 
     // Read from game
-    readBytes = read(myPlayer.gameProc.fdReadFromGame,
+    readBytes = read(myPlayer->gameProc.fdReadFromGame,
                      tossComm.gameOutput.output, sizeof(tossComm.gameOutput));
     if (readBytes == 0) {
       break;
     }
 
+    // Consume and ignore if Player <-> Game door is blocked
+    if (myPlayer->gameProc.blockedComms) {
+      if (DEBUG) {
+        printf("[DEBUG] - Ignored game output! Game belong to Player [%s]!\n",
+               myPlayer->username);
+      }
+      continue;
+    }
+
     // Redirect to player
     int writtenBytes =
-        write(param->app->playerList[param->myPlayerIndex].fdComm_Write,
-              &tossComm, sizeof(TossComm));
+        write(myPlayer->fdComm_Write, &tossComm, sizeof(TossComm));
   };
 
   if (DEBUG) {
-    printf("[DEBUG] - Got disconnected from %s game!\n", myPlayer.username);
+    printf("[DEBUG] - Got disconnected from %s game!\n", myPlayer->username);
   }
   free(param);
   return (void*)EXIT_SUCCESS;

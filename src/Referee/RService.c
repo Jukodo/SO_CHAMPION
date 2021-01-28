@@ -363,13 +363,22 @@ void Service_PlayerInput(Application *app, int procId, char *command) {
              command, app->playerList[playerIndex].username, procId);
     }
 
-    Player player = app->playerList[playerIndex];
-    if (player.gameProc.active) {
+    Player *player = &app->playerList[playerIndex];
+    if (player->gameProc.active) {
+      // Consume and ignore if Player <-> Game door is blocked
+      if (player->gameProc.blockedComms) {
+        if (DEBUG) {
+          printf("[DEBUG] - Ignored command from Player [%s]!\n",
+                 player->username);
+        }
+        return;
+      }
+
       if (DEBUG) {
         printf("[DEBUG] - Trying to write %s to game of player [%s]\n", command,
-               player.username);
+               player->username);
       }
-      if (write(player.gameProc.fdWriteToGame, command, STRING_LARGE) == -1) {
+      if (write(player->gameProc.fdWriteToGame, command, STRING_LARGE) == -1) {
         printf("[ERROR] - Could not write to game... Error: %d", errno);
       }
     }
@@ -419,9 +428,9 @@ void Service_HandleSelfCommand(Application *app, char *command) {
   else if (command[0] == 'k') {
     Service_KickPlayer(app, command + 1);
   } else if (command[0] == 's') {
-    Service_SetPlayerAndGameDoor(app, command + 1, false);
-  } else if (command[0] == 'r') {
     Service_SetPlayerAndGameDoor(app, command + 1, true);
+  } else if (command[0] == 'r') {
+    Service_SetPlayerAndGameDoor(app, command + 1, false);
   }
   // Testing commands
   else if (strcmp(command, "t_opengame") == 0) {
@@ -487,9 +496,26 @@ bool Service_SetPlayerAndGameDoor(Application *app, char *username,
     return false;
   }
 
-  printf("[INFO] - Player ([%s]) <-> Game door new status! Status: %d\n",
-         username, newStatus);
+  if (foundPlayer->gameProc.blockedComms == newStatus) {
+    printf(
+        "[WARNING] - Ignored status change of Player ([%s]) <-> Game door! "
+        "Player's door is already %s...\n",
+        username, newStatus ? "blocked" : "unblocked");
+    return false;
+  }
+
+  printf("[INFO] - Player ([%s]) <-> Game door new status! Status: %s\n",
+         username, newStatus ? "blocked" : "unblocked");
   foundPlayer->gameProc.blockedComms = newStatus;
+
+  TossComm *tossComm = malloc(sizeof(TossComm));
+  if (tossComm == NULL) {
+    return false;
+  }
+  tossComm->tossType = newStatus ? TCRT_DOOR_BLOCKED : TCRT_DOOR_UNBLOCKED;
+
+  Service_SendTossComm(app, foundPlayer->procId, tossComm);
+
   return true;
 }
 
@@ -643,16 +669,16 @@ void Service_BroadcastChampionshipState(Application *app,
                app->referee.championshipCount, app->referee.waitingDuration);
       break;
     case CS_WINNER: {
-      Player *winner = null;
+      Player *winner = NULL;
       for (int i = 0; i < app->referee.maxPlayers; i++) {
         if (app->playerList[i].active) {
-          if (winner == null ||
+          if (winner == NULL ||
               app->playerList[i].lastScore > winner->lastScore) {
             winner = &app->playerList[i];
           }
         }
       }
-      if (winner == null) {
+      if (winner == NULL) {
         printf("[ERROR] - Could not get any winner! Odd...\n");
         snprintf(message, STRING_LARGE, "[CHAMPIONSHIP #%d] No one! Odd...\n");
       } else {

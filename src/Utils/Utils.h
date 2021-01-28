@@ -8,7 +8,6 @@
 typedef int bool;
 #define true 1
 #define false 0
-#define null 0
 
 #define STRING_SMALL 25
 #define STRING_MEDIUM 50
