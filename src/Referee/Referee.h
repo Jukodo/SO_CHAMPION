@@ -20,7 +20,7 @@
 
 #define DEBUG 1
 
-#define DEFAULT_GAMEDIR "~/Documents/SO/SO_CHAMPION/Execs/Games/"
+#define DEFAULT_GAMEDIR "./Games/"
 #define DEFAULT_MAXPLAYER 10
 #define DEFAULT_MINPLAYERS_START 2
 

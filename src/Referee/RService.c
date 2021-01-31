@@ -109,7 +109,8 @@ bool Setup_Variables(Application *app, int argc, char **argv) {
   if (dir) {
     closedir(dir);
   } else if (ENOENT == errno) {
-    printf("\tDirectory does not exist... Create? (* = yes | n = no)\n");
+    printf("\tDirectory %s does not exist... Create? (* = yes | n = no)\n",
+           gamedir);
     printf("\t-> ");
 
     char line[STRING_MEDIUM];
@@ -166,9 +167,8 @@ bool Setup_AvailableGames(Application *app) {
           if (newGameList == NULL) {
             printf("Realloc failed\n");
             return false;
-          } else {
-            app->availableGames.gameList = newGameList;
           }
+          app->availableGames.gameList = newGameList;
         }
         strcpy(
             app->availableGames.gameList[app->availableGames.quantityGames - 1]
@@ -180,6 +180,14 @@ bool Setup_AvailableGames(Application *app) {
     closedir(gamedir);
   } else {
     printf("\n\tUnexpected error on mkdir()! Program will exit...");
+    return false;
+  }
+
+  if (app->availableGames.quantityGames <= 0) {
+    printf(
+        "[ERROR] - Directory %s does not have games! Add at least one so that "
+        "the championship can continue...\nApplication quitting...",
+        app->referee.gameDir);
     return false;
   }
 
