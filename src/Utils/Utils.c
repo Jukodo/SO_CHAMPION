@@ -34,3 +34,7 @@ void Utils_GenerateNewRandSeed() { srand((unsigned int)time(NULL)); }
 int Utils_GetRandomNumber(int min, int max) {
   return (rand() % max - min) + min;
 }
+
+float Utils_RoundFloat(float n, float i) {
+  return floor(pow(10, i) * n) / pow(10, i);
+}

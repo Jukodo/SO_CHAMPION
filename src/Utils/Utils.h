@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,3 +21,4 @@ bool Utils_StringIsNumber(char* str);
 bool Utils_StringIsEmpty(char* str);
 void Utils_GenerateNewRandSeed();
 int Utils_GetRandomNumber(int min, int max);
+float Utils_RoundFloat(float n, float i);

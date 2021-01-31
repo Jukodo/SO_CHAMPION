@@ -50,6 +50,7 @@ bool Setup_Application(Application *app, int argc, char **argv) {
   }
 
   Print_Application(app);
+  Utils_GenerateNewRandSeed();
 
   return true;
 }
@@ -196,10 +197,17 @@ bool Setup_AvailableGames(Application *app) {
 
 bool Setup_NamedPipes(Application *app) {
   if (mkfifo(FIFO_REFEREE_ENTRY, 0777) == -1) {
-    // Only returns error if file does not exist after operation
+    // Avoid multiple Referees by checking if named pipe is created
     if (errno != EEXIST) {
-      printf("\n\tUnexpected error on mkfifo()! Program will exit...");
-      printf("\n\t\tError: %d", errno);
+      printf(
+          "[ERROR] - Unexpected error on mkfifo()! Program will exit... Error: "
+          "%d\n",
+          errno);
+      return false;
+    } else {
+      printf(
+          "[ERROR] - There is already a referee running! Program will "
+          "exit...\n");
       return false;
     }
   }
@@ -749,8 +757,6 @@ void Service_SendTossComm(Application *app, int procId, TossComm *tossComm) {
  * Get a random game index from avaliable games
  */
 int getRandomGameIndex(Application *app) {
-  srand(time(NULL));
-
   return rand() % app->availableGames.quantityGames;
 }
 

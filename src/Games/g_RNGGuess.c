@@ -43,11 +43,6 @@ void Print_Introduction() {
   write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
 
   memset(bufSTDOUT, '\0', STRING_LARGE);
-  sprintf(bufSTDOUT,
-          "\t - If you choose to play again, the number will change\n");
-  write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
-
-  memset(bufSTDOUT, '\0', STRING_LARGE);
   sprintf(bufSTDOUT, "\t - The number only changes when you guess it\n");
   write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
 
