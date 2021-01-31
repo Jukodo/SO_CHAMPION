@@ -52,7 +52,7 @@ cleanObj:
 run: runReferee runPlayer runGames
 
 runReferee:
-	../Execs/Referee "D_300000" "W_60000"
+	../Execs/Referee "W_60" "D_300"
 
 runPlayer:
 	../Execs/Player
