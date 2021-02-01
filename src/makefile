@@ -13,6 +13,11 @@ gameArith: Utils.o
 	gcc -o ../Execs/Games/g_Arithmetic ../tmp/g_Arithmetic.o ../tmp/Utils.o -lm
 	../Execs/Games/g_Arithmetic
 
+gameDinoTrivia: Utils.o
+	gcc -c -o ../tmp/g_DinoTrivia.o ./Games/g_DinoTrivia.c
+	gcc -o ../Execs/Games/g_DinoTrivia ../tmp/g_DinoTrivia.o ../tmp/Utils.o -lm
+	../Execs/Games/g_DinoTrivia
+
 Player: Player.o PService.o PThreads.o Utils.o
 	gcc -o ../Execs/Player ../tmp/Player.o ../tmp/PService.o ../tmp/PThreads.o ../tmp/Utils.o -pthread -lm
 
@@ -37,15 +42,19 @@ RService.o: ./Referee/RService.c
 RThreads.o: ./Referee/RThreads.c
 	gcc -c -o ../tmp/RThreads.o ./Referee/RThreads.c
 
-Games: g_RNGGuess.o g_Arithmetic.o Utils.o
+Games: g_RNGGuess.o g_Arithmetic.o g_DinoTrivia.o Utils.o
 	gcc -o ../Execs/Games/g_RNGGuess ../tmp/g_RNGGuess.o ../tmp/Utils.o -lm
 	gcc -o ../Execs/Games/g_Arithmetic ../tmp/g_Arithmetic.o ../tmp/Utils.o -lm
+	gcc -o ../Execs/Games/g_DinoTrivia ../tmp/g_DinoTrivia.o ../tmp/Utils.o -lm
 
 g_RNGGuess.o: ./Games/g_RNGGuess.c
 	gcc -c -o ../tmp/g_RNGGuess.o ./Games/g_RNGGuess.c
 
 g_Arithmetic.o: ./Games/g_Arithmetic.c
 	gcc -c -o ../tmp/g_Arithmetic.o ./Games/g_Arithmetic.c
+
+g_DinoTrivia.o: ./Games/g_DinoTrivia.c
+	gcc -c -o ../tmp/g_DinoTrivia.o ./Games/g_DinoTrivia.c
 
 Utils.o: Utils/Utils.c
 	gcc -c -o ../tmp/Utils.o ./Utils/Utils.c 
@@ -56,7 +65,7 @@ clean:
 	rm -f ../tmp/*.o
 
 cleanObj:
-	rm ../Execs/Referee ../Execs/Player ../Execs/Games/g_RNGGuess ../Execs/Games/g_Arithmetic
+	rm ../Execs/Referee ../Execs/Player ../Execs/Games/g_RNGGuess ../Execs/Games/g_Arithmetic ../Execs/Games/g_DinoTrivia
 
 run: runReferee runPlayer runGames
 
@@ -69,3 +78,4 @@ runPlayer:
 runGames:
 	../Execs/Games/g_RNGGuess
 	../Execs/Games/g_Arithmetic
+	../Execs/Games/g_DinoTrivia

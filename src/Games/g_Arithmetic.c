@@ -51,7 +51,7 @@ void Print_Introduction() {
   memset(bufSTDOUT, '\0', STRING_LARGE);
   sprintf(
       bufSTDOUT,
-      "\t - The arithmetic changes after yaou answer, either correct or not\n");
+      "\t - The arithmetic changes after you answer, either correct or not\n");
   write(STDOUT_FILENO, &bufSTDOUT, sizeof(bufSTDOUT));
 
   memset(bufSTDOUT, '\0', STRING_LARGE);
