@@ -32,7 +32,7 @@ bool Utils_StringIsEmpty(char* str) {
 void Utils_GenerateNewRandSeed() { srand((unsigned int)time(NULL)); }
 
 int Utils_GetRandomNumber(int min, int max) {
-  return (rand() % max - min) + min;
+  return (rand() % (max + 1) - min) + min;
 }
 
 float Utils_RoundFloat(float n, float i) {
