@@ -453,10 +453,10 @@ void Service_HandleSelfCommand(Application *app, char *command) {
     if (app->playerList[0].active) {
       Service_OpenGame(app, app->playerList[0].procId);
     }
+  } else if (strcmp(command, "end") == 0) {
+    pthread_mutex_unlock(&app->mutCountdown);
   } else if (strcmp(command, "t_unlockchamp") == 0) {
     pthread_mutex_unlock(&app->mutStartChampionship);
-  } else if (strcmp(command, "t_unlockcd") == 0) {
-    pthread_mutex_unlock(&app->mutCountdown);
   }
 }
 
